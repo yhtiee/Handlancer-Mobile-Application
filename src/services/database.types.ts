@@ -1,0 +1,212 @@
+/**
+ * Hand-maintained types mirroring supabase/migrations/0001_init.sql.
+ * Regenerate with `supabase gen types typescript` once the project is linked.
+ */
+
+export type UserRole = 'user' | 'provider';
+export type JobStatus =
+  | 'draft'
+  | 'posted'
+  | 'hiring'
+  | 'in_progress'
+  | 'completed'
+  | 'disputed'
+  | 'cancelled';
+export type QuoteStatus = 'submitted' | 'approved' | 'rejected' | 'revised';
+export type EscrowStatus =
+  | 'pending'
+  | 'funded'
+  | 'materials_released'
+  | 'completed'
+  | 'refunded';
+export type TxnType = 'fund' | 'withdraw' | 'escrow_hold' | 'escrow_release' | 'payout';
+export type TxnStatus = 'pending' | 'success' | 'failed';
+export type MediaPhase = 'before' | 'after';
+export type MediaKind = 'photo' | 'video';
+export type DisputeStatus = 'open' | 'in_review' | 'resolved' | 'rejected';
+
+export type QuoteLineItem = {
+  label: string;
+  type: 'material' | 'labor';
+  amount: number;
+};
+
+export type Profile = {
+  id: string;
+  role: UserRole;
+  name: string | null;
+  avatar_url: string | null;
+  phone: string | null;
+  email: string | null;
+  bio: string | null;
+  location: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  service_radius_km?: number | null;
+  availability?: 'available' | 'busy' | 'on_call' | 'offline' | null;
+  business_name?: string | null;
+  bank_name?: string | null;
+  account_number?: string | null;
+  account_name?: string | null;
+  is_verified?: boolean;
+  services: string[];
+  rating: number;
+  hourly_rate: number | null;
+  years_experience: number | null;
+  push_token: string | null;
+  created_at: string;
+};
+
+export type Job = {
+  id: string;
+  owner_id: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  budget: number | null;
+  location: string | null;
+  is_direct: boolean;
+  hired_provider_id: string | null;
+  status: JobStatus;
+  scheduled_for: string | null;
+  created_at: string;
+};
+
+export type Quote = {
+  id: string;
+  job_id: string;
+  provider_id: string;
+  line_items: QuoteLineItem[];
+  materials_cost: number;
+  labor_cost: number;
+  total: number;
+  message: string | null;
+  status: QuoteStatus;
+  created_at: string;
+};
+
+export type Escrow = {
+  id: string;
+  job_id: string;
+  total: number;
+  materials_amount: number;
+  materials_released: boolean;
+  workmanship_released: boolean;
+  status: EscrowStatus;
+  created_at: string;
+};
+
+export type Wallet = {
+  id: string;
+  owner_id: string;
+  balance: number;
+  currency: string;
+  created_at: string;
+};
+
+export type Transaction = {
+  id: string;
+  wallet_id: string;
+  job_id: string | null;
+  type: TxnType;
+  status: TxnStatus;
+  amount: number;
+  reference: string | null;
+  created_at: string;
+};
+
+export type Conversation = {
+  id: string;
+  job_id: string | null;
+  user_id: string;
+  provider_id: string;
+  created_at: string;
+};
+
+export type Message = {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+};
+
+export type Review = {
+  id: string;
+  job_id: string;
+  reviewer_id: string;
+  provider_id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+};
+
+export type JobMedia = {
+  id: string;
+  job_id: string;
+  provider_id: string;
+  phase: MediaPhase;
+  kind: MediaKind;
+  url: string;
+  created_at: string;
+};
+
+export type Notification = {
+  id: string;
+  user_id: string;
+  type: string;
+  payload: Record<string, unknown>;
+  read: boolean;
+  created_at: string;
+};
+
+export type Dispute = {
+  id: string;
+  job_id: string;
+  opened_by: string;
+  reason: string | null;
+  status: DisputeStatus;
+  created_at: string;
+};
+
+type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
+  Row: Row;
+  Insert: Insert;
+  Update: Update;
+  Relationships: [];
+};
+
+export type Database = {
+  public: {
+    Tables: {
+      profiles: Table<Profile>;
+      jobs: Table<Job>;
+      quotes: Table<Quote>;
+      escrows: Table<Escrow>;
+      wallets: Table<Wallet>;
+      transactions: Table<Transaction>;
+      conversations: Table<Conversation>;
+      messages: Table<Message>;
+      reviews: Table<Review>;
+      job_media: Table<JobMedia>;
+      notifications: Table<Notification>;
+      disputes: Table<Dispute>;
+    };
+    Views: Record<string, never>;
+    Functions: {
+      fund_escrow: { Args: { p_job_id: string }; Returns: undefined };
+      release_materials: { Args: { p_job_id: string }; Returns: undefined };
+      release_workmanship: { Args: { p_job_id: string }; Returns: undefined };
+      request_withdrawal: { Args: { p_amount: number }; Returns: undefined };
+    };
+    Enums: {
+      user_role: UserRole;
+      job_status: JobStatus;
+      quote_status: QuoteStatus;
+      escrow_status: EscrowStatus;
+      txn_type: TxnType;
+      txn_status: TxnStatus;
+    };
+    CompositeTypes: Record<string, never>;
+  };
+};

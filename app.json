@@ -4,6 +4,7 @@
     "slug": "handlancer",
     "version": "1.0.0",
     "orientation": "portrait",
+    "owner": "handlancer-mobile-application",
     "icon": "./assets/images/logo.png",
     "scheme": "handlancer",
     "userInterfaceStyle": "automatic",
@@ -11,7 +12,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.yhutiee.handlancer",
       "infoPlist": {
-        "CFBundleDisplayName": "Handlancer"
+        "CFBundleDisplayName": "Handlancer",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -20,7 +22,10 @@
         "foregroundImage": "./assets/images/logo.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.yhutiee.handlancer"
+      "package": "com.yhutiee.handlancer",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -50,11 +55,18 @@
           "photosPermission": "Allow HandLancer to access your photos to upload proof of work.",
           "cameraPermission": "Allow HandLancer to use the camera to capture proof of work."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "519bc527-45ee-4148-bb88-bc2859a6fb0b"
+      }
     }
   }
 }

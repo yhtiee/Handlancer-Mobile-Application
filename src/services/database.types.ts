@@ -45,9 +45,10 @@ export type Profile = {
   service_radius_km?: number | null;
   availability?: 'available' | 'busy' | 'on_call' | 'offline' | null;
   business_name?: string | null;
-  bank_name?: string | null;
-  account_number?: string | null;
-  account_name?: string | null;
+  /**
+   * Bank details deliberately live in `wallet_security`, not here: `profiles` is
+   * readable by every authenticated user. Reach them via getWalletSecurity().
+   */
   is_verified?: boolean;
   services: string[];
   rating: number;
@@ -93,6 +94,10 @@ export type Escrow = {
   materials_released: boolean;
   workmanship_released: boolean;
   status: EscrowStatus;
+  /** Set when the provider asks for the materials portion; cleared by nothing. */
+  materials_requested_at: string | null;
+  /** Set when the provider marks the work finished and asks for review. */
+  completion_requested_at: string | null;
   created_at: string;
 };
 
@@ -197,7 +202,29 @@ export type Database = {
       fund_escrow: { Args: { p_job_id: string }; Returns: undefined };
       release_materials: { Args: { p_job_id: string }; Returns: undefined };
       release_workmanship: { Args: { p_job_id: string }; Returns: undefined };
-      request_withdrawal: { Args: { p_amount: number }; Returns: undefined };
+      request_withdrawal: { Args: { p_amount: number; p_pin: string }; Returns: undefined };
+      wallet_security_status: {
+        Args: Record<string, never>;
+        Returns: {
+          has_pin: boolean;
+          pin_locked: boolean;
+          pin_locked_until: string | null;
+          has_bank: boolean;
+          bank_name: string | null;
+          account_name: string | null;
+          account_masked: string | null;
+        }[];
+      };
+      set_transfer_pin: {
+        Args: { p_pin: string; p_current_pin: string | null };
+        Returns: undefined;
+      };
+      request_materials_release: { Args: { p_job_id: string }; Returns: undefined };
+      request_completion_review: { Args: { p_job_id: string }; Returns: undefined };
+      review_and_release: {
+        Args: { p_job_id: string; p_rating: number; p_comment: string | null };
+        Returns: undefined;
+      };
     };
     Enums: {
       user_role: UserRole;

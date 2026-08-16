@@ -3,7 +3,11 @@ import type { ProviderJobSegment, UserJobSegment } from '@/services/jobs';
 /** Centralized TanStack Query keys. Keeps invalidation consistent across the app. */
 export const queryKeys = {
   profile: (id: string) => ['profile', id] as const,
-  providers: (search?: string) => ['providers', search ?? ''] as const,
+  /** `filterKey` comes from serializeProviderFilters — an object breaks caching. */
+  providers: (search?: string, filterKey?: string) =>
+    ['providers', search ?? '', filterKey ?? ''] as const,
+  providersCount: (search?: string, filterKey?: string) =>
+    ['providers-count', search ?? '', filterKey ?? ''] as const,
 
   jobs: {
     /**
@@ -15,7 +19,11 @@ export const queryKeys = {
     mineAll: () => ['jobs', 'mine'] as const,
     hired: (segment: ProviderJobSegment) => ['jobs', 'hired', segment] as const,
     hiredAll: () => ['jobs', 'hired'] as const,
-    discover: (search?: string) => ['jobs', 'discover', search ?? ''] as const,
+    /** `filterKey` comes from serializeFilters — an object here would break caching. */
+    discover: (search?: string, filterKey?: string) =>
+      ['jobs', 'discover', search ?? '', filterKey ?? ''] as const,
+    discoverCount: (search?: string, filterKey?: string) =>
+      ['jobs', 'discover-count', search ?? '', filterKey ?? ''] as const,
     detail: (id: string) => ['jobs', 'detail', id] as const,
   },
 

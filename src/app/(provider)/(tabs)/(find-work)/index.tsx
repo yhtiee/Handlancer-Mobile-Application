@@ -1,59 +1,97 @@
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { HeroBanner } from '@/components/home/hero-banner';
 import { HomeHeader } from '@/components/home/home-header';
 import { QuickActions } from '@/components/home/quick-actions';
-import { SectionHeader } from '@/components/home/section-header';
 import { JobCard } from '@/components/jobs/job-card';
-import { EmptyState, ListFooter, ListSkeleton, ScreenView, SearchField } from '@/components/ui';
-import { Layout } from '@/constants/theme';
+import { JobFilterBar } from '@/components/jobs/job-filter-bar';
+import { JobFilterSheet } from '@/components/jobs/job-filter-sheet';
+import { Button, EmptyState, ListFooter, ListSkeleton, ScreenView, SearchField } from '@/components/ui';
+import { Layout, Spacing, Type } from '@/constants/theme';
+import { countActiveFilters, emptyJobFilters, SORT_LABELS, type JobFilters } from '@/lib/job-filters';
 import { routes } from '@/lib/routes';
 import { useAuth } from '@/providers/auth-provider';
-import { useOpenJobs } from '@/queries/use-discover-jobs';
+import { useOpenJobs, useOpenJobsCount } from '@/queries/use-discover-jobs';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useInfiniteList } from '@/hooks/use-infinite-list';
 import { useTabBarInset } from '@/hooks/use-insets';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function FindWork() {
+  const theme = useTheme();
   const { profile } = useAuth();
   const bottomInset = useTabBarInset();
+
   const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState<JobFilters>(emptyJobFilters);
+  const [sheetOpen, setSheetOpen] = useState(false);
+
   // The field stays instant; the query only sees what the user settled on.
   const debouncedSearch = useDebouncedValue(search);
-  const query = useOpenJobs(debouncedSearch);
+  const query = useOpenJobs(debouncedSearch, filters);
   const { items: jobs, onEndReached, loadingMore } = useInfiniteList(query);
+  const { data: total } = useOpenJobsCount(debouncedSearch, filters);
+
+  const active = countActiveFilters(filters);
+  const narrowed = active > 0 || Boolean(debouncedSearch);
 
   const listHeader = (
-    <View style={{ gap: Layout.sectionGap, paddingBottom: Layout.sectionGap }}>
-      <SearchField value={search} onChangeText={setSearch} placeholder="Search jobs" />
-
-      <QuickActions
-        primary={{
-          icon: 'document-text-outline',
-          label: 'My Quotes',
-          hint: 'Track your bids',
-          href: routes.providerQuotes,
-        }}
-        secondary={{
-          icon: 'wallet-outline',
-          label: 'Wallet',
-          hint: 'Earnings & payouts',
-          href: routes.wallet('provider'),
-        }}
+    <View style={{ gap: Layout.listGap, paddingBottom: Layout.listGap }}>
+      <SearchField
+        value={search}
+        onChangeText={setSearch}
+        placeholder="Search jobs, trades or areas"
       />
 
-      <HeroBanner
-        title="Win more work"
-        subtitle="A sharp profile and portfolio gets you hired faster."
-        ctaLabel="Edit profile"
-        href={routes.profileEdit('provider')}
-        icon="ribbon"
-        bgImage="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=800&auto=format&fit=crop"
+      <JobFilterBar
+        filters={filters}
+        onChange={setFilters}
+        onOpenFilters={() => setSheetOpen(true)}
       />
 
-      <SectionHeader title="Open jobs" />
+      {/* Promos only when the provider is browsing. Once they are searching or
+          filtering they came here to work, and these just push jobs down. */}
+      {!narrowed ? (
+        <View style={{ gap: Layout.listGap, paddingTop: Spacing.two }}>
+          <QuickActions
+            primary={{
+              icon: 'document-text-outline',
+              label: 'My Quotes',
+              hint: 'Track your bids',
+              href: routes.providerQuotes,
+            }}
+            secondary={{
+              icon: 'wallet-outline',
+              label: 'Wallet',
+              hint: 'Earnings & payouts',
+              href: routes.wallet('provider'),
+            }}
+          />
+          <HeroBanner
+            title="Win more work"
+            subtitle="A sharp profile and portfolio gets you hired faster."
+            ctaLabel="Edit profile"
+            href={routes.profileEdit('provider')}
+            icon="ribbon"
+            bgImage="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=800&auto=format&fit=crop"
+          />
+        </View>
+      ) : null}
+
+      {/* Result count doubles as the section header — it tells the provider
+          whether a filter did what they expected. */}
+      <View style={[styles.resultRow, { paddingTop: Spacing.two }]}>
+        <Text style={[Type.h3, { color: theme.text }]}>
+          {total == null
+            ? 'Open jobs'
+            : `${total} open job${total === 1 ? '' : 's'}`}
+        </Text>
+        <Text style={[Type.caption, { color: theme.textSecondary }]}>
+          {SORT_LABELS[filters.sort]}
+        </Text>
+      </View>
     </View>
   );
 
@@ -61,6 +99,7 @@ export default function FindWork() {
     <ScreenView>
       <Stack.Screen options={{ headerShown: false }} />
       <HomeHeader shell="provider" name={profile?.name} location={profile?.location} />
+
       <FlatList
         data={jobs}
         keyExtractor={(item) => item.id}
@@ -83,18 +122,45 @@ export default function FindWork() {
           query.isLoading ? (
             <ListSkeleton />
           ) : (
-            <EmptyState
-              icon="search"
-              title={debouncedSearch ? 'No matching jobs' : 'No open jobs'}
-              description={
-                debouncedSearch
-                  ? 'Try a different search.'
-                  : 'New jobs and direct invites will appear here. Pull to refresh.'
-              }
-            />
+            <View style={{ gap: Spacing.three }}>
+              <EmptyState
+                icon={narrowed ? 'filter' : 'search'}
+                title={narrowed ? 'No jobs match these filters' : 'No open jobs'}
+                description={
+                  narrowed
+                    ? 'Try widening your budget range, adding trades, or clearing the location.'
+                    : 'New jobs and direct invites will appear here. Pull to refresh.'
+                }
+              />
+              {/* The way out of an over-filtered dead end, right where they hit it. */}
+              {active > 0 ? (
+                <Button
+                  title="Clear all filters"
+                  variant="secondary"
+                  icon="close-circle"
+                  onPress={() => setFilters(emptyJobFilters)}
+                />
+              ) : null}
+            </View>
           )
         }
+      />
+
+      <JobFilterSheet
+        visible={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        value={filters}
+        onApply={setFilters}
+        search={debouncedSearch}
       />
     </ScreenView>
   );
 }
+
+const styles = StyleSheet.create({
+  resultRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+  },
+});

@@ -1,9 +1,19 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { QuoteCard } from '@/components/quotes/quote-card';
-import { Button, Card, EmptyState, formatMoney, GlobalLoader, Icon, MoneyText, ScreenView } from '@/components/ui';
+import {
+  Button,
+  Card,
+  EmptyState,
+  formatMoney,
+  GlobalLoader,
+  Icon,
+  MoneyText,
+  ScreenView,
+  SuccessModal,
+} from '@/components/ui';
 import { Layout, Radius, Spacing } from '@/constants/theme';
 import { routes } from '@/lib/routes';
 import { useStartConversation } from '@/queries/use-chat';
@@ -27,6 +37,8 @@ export default function JobQuotes() {
 
   const [escrowModalQuote, setEscrowModalQuote] = useState<QuoteWithProvider | null>(null);
   const [escrowError, setEscrowError] = useState<string | null>(null);
+  const [approveError, setApproveError] = useState<string | null>(null);
+  const [hired, setHired] = useState<{ name: string; amount: number } | null>(null);
 
   const approvedQuote = quotes?.find((q) => q.status === 'approved');
   const decided = Boolean(approvedQuote);
@@ -37,11 +49,12 @@ export default function JobQuotes() {
   }
 
   async function handleApprove(quote: QuoteWithProvider) {
+    setApproveError(null);
     try {
       await approve.mutateAsync(quote);
       setEscrowModalQuote(quote);
     } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Could not approve quote');
+      setApproveError(e instanceof Error ? e.message : 'Could not approve quote');
     }
   }
 
@@ -50,17 +63,11 @@ export default function JobQuotes() {
     setEscrowError(null);
     try {
       await fund.mutateAsync();
+      setHired({
+        name: escrowModalQuote.provider?.name ?? 'The provider',
+        amount: escrowModalQuote.total,
+      });
       setEscrowModalQuote(null);
-      Alert.alert(
-        'Provider Hired! 🎉',
-        `Payment of ${formatMoney(escrowModalQuote.total)} confirmed into escrow. Work can now begin!`,
-        [
-          {
-            text: 'Go to Job Details',
-            onPress: () => router.push(routes.jobDetail(jobId)),
-          },
-        ],
-      );
     } catch (e) {
       setEscrowError(e instanceof Error ? e.message : 'Escrow payment failed.');
     }
@@ -133,6 +140,13 @@ export default function JobQuotes() {
             paddingBottom: bottomInset,
             gap: Layout.listGap,
           }}
+          ListHeaderComponent={
+            approveError ? (
+              <Text selectable style={[styles.errorText, { color: theme.danger }]}>
+                {approveError}
+              </Text>
+            ) : null
+          }
           renderItem={({ item }) => <QuoteCard quote={item}>{renderActions(item)}</QuoteCard>}
           ListEmptyComponent={
             <EmptyState
@@ -226,6 +240,18 @@ export default function JobQuotes() {
           </View>
         </View>
       </Modal>
+
+      <SuccessModal
+        visible={Boolean(hired)}
+        onClose={() => {
+          setHired(null);
+          router.push(routes.jobDetail(jobId));
+        }}
+        title="Provider hired"
+        message={`${hired?.name ?? 'The provider'} has been hired and your payment is held safely in escrow. Work can begin now.`}
+        amount={hired?.amount}
+        actionLabel="Go to job"
+      />
     </ScreenView>
   );
 }

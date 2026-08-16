@@ -8,11 +8,6 @@ import { Avatar, Button, GlobalLoader, Icon, RatingStars } from '@/components/ui
 import { formatMoney } from '@/components/ui/money-text';
 import { Elevation, Radius, Spacing, Type } from '@/constants/theme';
 import { providerImageFallback } from '@/lib/provider-images';
-import {
-  providerBioFallback,
-  providerReviewsFallback,
-  type DisplayReview,
-} from '@/lib/provider-placeholders';
 import { routes } from '@/lib/routes';
 import { useProviderMedia } from '@/queries/use-media';
 import { useProvider } from '@/queries/use-providers';
@@ -52,18 +47,17 @@ export default function ProviderProfile() {
     ? `${primarySkill} · ${years} year${years === 1 ? '' : 's'} Experience`
     : primarySkill;
 
-  const bio = provider.bio?.trim() || providerBioFallback(provider);
+  const bio = provider.bio?.trim();
 
-  const realReviews = reviews ?? [];
-  const displayReviews: DisplayReview[] = realReviews.length
-    ? realReviews.map((r) => ({
-        id: r.id,
-        rating: r.rating,
-        comment: r.comment ?? '',
-        reviewerName: r.reviewer?.name ?? 'Customer',
-        reviewerAvatar: r.reviewer?.avatar_url ?? null,
-      }))
-    : providerReviewsFallback(provider);
+  // Only ever real reviews. Showing invented ones would misrepresent a real
+  // person to a customer deciding whether to trust them with their home.
+  const displayReviews = (reviews ?? []).map((r) => ({
+    id: r.id,
+    rating: r.rating,
+    comment: r.comment ?? '',
+    reviewerName: r.reviewer?.name ?? 'Customer',
+    reviewerAvatar: r.reviewer?.avatar_url ?? null,
+  }));
   const featured = displayReviews[0];
   const firstName = provider.name?.split(' ')[0] ?? 'provider';
 
@@ -82,37 +76,43 @@ export default function ProviderProfile() {
             <Text style={[Type.h2, styles.name, { color: theme.text }]} numberOfLines={1}>
               {provider.name ?? 'Provider'}
             </Text>
-            {provider.rating ? (
+            {displayReviews.length ? (
               <View style={styles.rating}>
                 <Icon name="star" size={15} color={theme.warning} />
                 <Text style={[styles.ratingValue, { color: theme.text }]}>
-                  {provider.rating.toFixed(1)}
+                  {provider.rating ? provider.rating.toFixed(1) : '—'}
                 </Text>
                 <Text style={[styles.ratingCount, { color: theme.tint }]}>
                   ({displayReviews.length})
                 </Text>
               </View>
-            ) : null}
+            ) : (
+              <View style={[styles.chip, { backgroundColor: theme.tint + '14' }]}>
+                <Text style={[styles.chipText, { color: theme.tint }]}>New</Text>
+              </View>
+            )}
           </View>
 
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{subtitle}</Text>
 
-          {/* About me */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>About me</Text>
-            <Text
-              style={[styles.bio, { color: theme.textSecondary }]}
-              numberOfLines={bioExpanded ? undefined : 3}>
-              {bio}
-            </Text>
-            {bio.length > 120 ? (
-              <Pressable hitSlop={6} onPress={() => setBioExpanded((v) => !v)}>
-                <Text style={[styles.readMore, { color: theme.tint }]}>
-                  {bioExpanded ? 'Show less' : 'Read more'}
-                </Text>
-              </Pressable>
-            ) : null}
-          </View>
+          {/* About me — omitted entirely rather than filled with invented copy. */}
+          {bio ? (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>About me</Text>
+              <Text
+                style={[styles.bio, { color: theme.textSecondary }]}
+                numberOfLines={bioExpanded ? undefined : 3}>
+                {bio}
+              </Text>
+              {bio.length > 120 ? (
+                <Pressable hitSlop={6} onPress={() => setBioExpanded((v) => !v)}>
+                  <Text style={[styles.readMore, { color: theme.tint }]}>
+                    {bioExpanded ? 'Show less' : 'Read more'}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
 
           {/* Skills */}
           {provider.services?.length ? (
@@ -125,8 +125,16 @@ export default function ProviderProfile() {
             </View>
           ) : null}
 
-          {/* Review */}
-          {featured ? (
+          {/* Reviews. Absent until this provider has actually earned one. */}
+          {!featured ? (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Reviews</Text>
+              <Text style={[styles.bio, { color: theme.textSecondary }]}>
+                No reviews yet — {firstName} is new to HandLancer. Every job is covered by
+                escrow, so your payment is only released once you approve the work.
+              </Text>
+            </View>
+          ) : (
             <View style={styles.section}>
               <View style={styles.reviewHeader}>
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>Review</Text>
@@ -152,7 +160,7 @@ export default function ProviderProfile() {
                 </View>
               </View>
             </View>
-          ) : null}
+          )}
         </View>
       </ScrollView>
 

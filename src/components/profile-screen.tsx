@@ -48,6 +48,12 @@ export function ProfileScreen({ shell }: { shell: 'user' | 'provider' }) {
           <Divider />
           <MenuRow href={routes.profileEdit(shell)} icon="pencil" label="Edit profile" />
           <Divider />
+          {profile?.role === 'provider' ? (
+            <>
+              <MenuRow href={routes.profileReviews} icon="star" label="My reviews" />
+              <Divider />
+            </>
+          ) : null}
           <MenuRow href={routes.profileSettings(shell)} icon="settings" label="Settings" />
           <Divider />
           <MenuRow href={routes.profileSupport(shell)} icon="help-circle" label="Support" />

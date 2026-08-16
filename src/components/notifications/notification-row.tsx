@@ -17,6 +17,24 @@ function describe(n: Notification): { icon: IconName; title: string; body: strin
       return { icon: 'chatbubble', title: 'New message', body: String(p.preview ?? '') };
     case 'review':
       return { icon: 'star', title: 'New review', body: `${String(p.rating ?? '')}★ on a completed job` };
+    case 'materials_requested':
+      return {
+        icon: 'cube',
+        title: 'Materials funds requested',
+        body: `${formatMoney(Number(p.amount ?? 0))} on “${String(p.title ?? 'your job')}”`,
+      };
+    case 'completion_requested':
+      return {
+        icon: 'checkmark-circle',
+        title: 'Work marked complete',
+        body: `Review “${String(p.title ?? 'your job')}” to release the final payment`,
+      };
+    case 'dispute_resolved':
+      return {
+        icon: 'shield-checkmark',
+        title: 'Dispute resolved',
+        body: `${formatMoney(Number(p.released ?? 0))} released · ${formatMoney(Number(p.refunded ?? 0))} refunded`,
+      };
     case 'escrow_release':
       return { icon: 'cube', title: 'Materials released', body: formatMoney(Number(p.amount ?? 0)) };
     case 'payout':

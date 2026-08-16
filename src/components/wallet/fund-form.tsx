@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Input, formatMoney } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
-import { useInitTopUp } from '@/queries/use-wallet';
+import { useInitTopUp, useRefreshWallet } from '@/queries/use-wallet';
 import { useTheme } from '@/hooks/use-theme';
 
 const PRESETS = [5000, 10000, 25000, 50000];
@@ -16,6 +16,7 @@ export function FundForm() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const topUp = useInitTopUp();
+  const refreshWallet = useRefreshWallet();
 
   const [amount, setAmount] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +28,10 @@ export function FundForm() {
     try {
       const { link } = await topUp.mutateAsync(value);
       await WebBrowser.openBrowserAsync(link);
-      // Wallet credits via webhook; the list refreshes on focus / pull-to-refresh.
+      // The webhook credits the wallet server-side while the browser is open, so
+      // the cached balance is stale by the time this resolves. Refetch before
+      // navigating back, otherwise a successful top-up looks like it did nothing.
+      refreshWallet();
       router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not start payment.');

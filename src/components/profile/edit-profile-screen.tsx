@@ -44,9 +44,8 @@ export function EditProfileScreen() {
     'available' | 'busy' | 'on_call' | 'offline'
   >(profile?.availability || 'available');
   const [businessName, setBusinessName] = useState(profile?.business_name ?? '');
-  const [bankName, setBankName] = useState(profile?.bank_name ?? '');
-  const [accountNumber, setAccountNumber] = useState(profile?.account_number ?? '');
-  const [accountName, setAccountName] = useState(profile?.account_name ?? '');
+  // Bank details moved to `wallet_security` and are set through the verified
+  // Flutterwave flow (Wallet → Bank account), not typed in here.
 
   const [nameError, setNameError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -116,9 +115,6 @@ export function EditProfileScreen() {
         service_radius_km: serviceRadiusKm ? parseInt(serviceRadiusKm, 10) : 20,
         availability,
         business_name: businessName.trim() || null,
-        bank_name: bankName.trim() || null,
-        account_number: accountNumber.trim() || null,
-        account_name: accountName.trim() || null,
       });
 
       await refreshProfile();
@@ -266,37 +262,21 @@ export function EditProfileScreen() {
             </View>
           </SectionCard>
 
-          {/* Business & Bank Payout Details */}
-          <SectionCard title="Business & Bank Details">
+          <SectionCard title="Business Details">
             <Input
               label="Registered Business Name (Optional)"
               value={businessName}
               onChangeText={setBusinessName}
-              placeholder="e.g. Syeila Plumbing Services Ltd"
+              placeholder="e.g. Adaeze Plumbing Services Ltd"
             />
-
-            <Input
-              label="Bank Name"
-              value={bankName}
-              onChangeText={setBankName}
-              placeholder="e.g. GTBank, Access Bank, Kuda"
-            />
-
-            <Input
-              label="Account Number (NUBAN)"
-              value={accountNumber}
-              onChangeText={setAccountNumber}
-              placeholder="10-digit account number"
-              keyboardType="numeric"
-              maxLength={10}
-            />
-
-            <Input
-              label="Account Holder Name"
-              value={accountName}
-              onChangeText={setAccountName}
-              placeholder="Name as registered with bank"
-            />
+            {/* Bank payout details are no longer typed in here. They are verified
+                against the bank via Flutterwave and stored in `wallet_security`,
+                so a payout can never go to an unverified account — see
+                Wallet → Bank account. */}
+            <Text style={[styles.label, { color: theme.textSecondary }]}>
+              Add your payout bank account under Wallet → Bank account. We verify it
+              with your bank before any withdrawal.
+            </Text>
           </SectionCard>
         </>
       ) : (

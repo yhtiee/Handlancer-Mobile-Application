@@ -14,7 +14,6 @@ import { useAuth } from '@/providers/auth-provider';
 import { useInfiniteList } from '@/hooks/use-infinite-list';
 import { useProviders } from '@/queries/use-providers';
 import { useTabBarInset } from '@/hooks/use-insets';
-import type { Profile } from '@/services/database.types';
 
 export default function Discover() {
   const { profile } = useAuth();
@@ -26,50 +25,9 @@ export default function Discover() {
   const { items: providerList } = useInfiniteList(query);
   const isLoading = query.isLoading;
 
-  // Get first two providers from server list
-  const displayProviders = [...providerList].slice(0, 2);
-
-  // If we don't have up to 2, include dummy providers
-  const dummy1: Profile = {
-    id: 'dummy-1',
-    role: 'provider',
-    name: 'Syeila Onstefen',
-    avatar_url: null,
-    phone: '+2348000000001',
-    email: 'syeila.onstefen@example.com',
-    bio: 'Experienced professional plumber.',
-    location: '24 km',
-    services: ['Plumber'],
-    rating: 4.9,
-    hourly_rate: 34,
-    years_experience: 5,
-    push_token: null,
-    created_at: new Date().toISOString(),
-  };
-
-  const dummy2: Profile = {
-    id: 'dummy-2',
-    role: 'provider',
-    name: 'Loka Madya',
-    avatar_url: null,
-    phone: '+2348000000002',
-    email: 'loka.madya@example.com',
-    bio: 'Dedicated home care professional.',
-    location: '12 km',
-    services: ['Plumber'],
-    rating: 4.7,
-    hourly_rate: 14,
-    years_experience: 3,
-    push_token: null,
-    created_at: new Date().toISOString(),
-  };
-
-  if (displayProviders.length < 1) {
-    displayProviders.push(dummy1);
-  }
-  if (displayProviders.length < 2) {
-    displayProviders.push(dummy2);
-  }
+  // Real providers only. Padding this carousel with invented people made an
+  // empty marketplace look populated, and tapping one led to a dead profile.
+  const displayProviders = providerList.slice(0, 6);
 
   // Full content width inside the screen's horizontal padding.
   const fullCardWidth = width - Layout.gutter * 2;

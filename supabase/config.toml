@@ -1,0 +1,18 @@
+project_id = "ukwotktmqacrpworudui"
+
+[functions.flutterwave-init]
+# Invoked by the app with the user's session, so the JWT gate stays on: the
+# function reads auth.getUser() from the forwarded Authorization header.
+verify_jwt = true
+
+[functions.flutterwave-bank]
+# Called by the app with the user's session; the function reads auth.getUser()
+# from the forwarded header to decide whose bank account it is saving.
+verify_jwt = true
+
+[functions.flutterwave-webhook]
+# Flutterwave authenticates with its own `verif-hash` header and has no Supabase
+# JWT to send. Leaving the platform JWT gate on would reject every webhook with
+# 401 before the function ever runs. The function verifies the hash itself and
+# re-checks the charge against Flutterwave's API before crediting anything.
+verify_jwt = false

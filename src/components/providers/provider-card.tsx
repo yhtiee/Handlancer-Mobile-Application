@@ -27,11 +27,9 @@ export function ProviderCard({
     setIsFavorited(!isFavorited);
   };
 
-  const reviewCount = provider.id === 'dummy-1'
-    ? 200
-    : provider.id === 'dummy-2'
-    ? 120
-    : Math.abs(provider.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % 150 + 10;
+  // No rating yet means no completed, reviewed jobs — say so rather than
+  // inventing a score. A fabricated number here is a claim about a real person.
+  const hasRating = (provider.rating ?? 0) > 0;
 
   return (
     <Link href={routes.providerProfile(provider.id)} asChild>
@@ -70,12 +68,16 @@ export function ProviderCard({
               <Text numberOfLines={1} style={[styles.name, { color: theme.text }]}>
                 {provider.name ?? 'Service Provider'}
               </Text>
-              {(
+              {hasRating ? (
                 <View style={styles.rating}>
                   <Icon name="star" size={13} color={theme.warning} />
-                  <Text style={[styles.ratingText, { color: theme.textSecondary }]}>
-                    <Text style={{ color: theme.text, fontWeight: '700' }}>{provider.rating ? provider.rating.toFixed(1) : 4.7}</Text> ({reviewCount})
+                  <Text style={[styles.ratingText, { color: theme.text }]}>
+                    {provider.rating.toFixed(1)}
                   </Text>
+                </View>
+              ) : (
+                <View style={[styles.newPill, { backgroundColor: theme.tint + '1F' }]}>
+                  <Text style={[styles.newText, { color: theme.tint }]}>NEW</Text>
                 </View>
               )}
             </View>
@@ -88,16 +90,16 @@ export function ProviderCard({
               <Text numberOfLines={1} style={[styles.cta, { color: theme.tint }]}>
                 View Profile
               </Text>
-              {(
+              {provider.location ? (
                 <View style={styles.location}>
                   <Icon name="location-outline" size={13} color={theme.textSecondary} />
                   <Text
                     numberOfLines={1}
                     style={[styles.locationText, { color: theme.textSecondary }]}>
-                    {provider.location ? provider.location : "24km"}
+                    {provider.location}
                   </Text>
                 </View>
-              )}
+              ) : null}
             </View>
           </View>
         </Pressable>
@@ -152,6 +154,8 @@ const styles = StyleSheet.create({
   name: { flex: 1, fontSize: 15, fontWeight: '800', lineHeight: 19 },
   rating: { flexDirection: 'row', alignItems: 'center', gap: Spacing.half },
   ratingText: { fontSize: 12, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  newPill: { paddingHorizontal: Spacing.two, paddingVertical: 2, borderRadius: Radius.pill },
+  newText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
   skill: { fontSize: 12, fontWeight: '600', lineHeight: 16 },
   metaRow: {
     marginTop: Spacing.one,

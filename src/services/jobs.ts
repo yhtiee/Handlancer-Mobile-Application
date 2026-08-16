@@ -1,3 +1,4 @@
+import { emptyJobFilters, postedSince, type JobFilters } from '@/lib/job-filters';
 import type { Job, JobStatus } from '@/services/database.types';
 import { pageRange, sanitizeSearchTerm, toPage, type Page } from '@/services/pagination';
 import { supabase } from '@/services/supabase';
@@ -94,28 +95,117 @@ export async function listOpenJobs(
   providerId: string,
   search: string | undefined,
   page: number,
+  filters: JobFilters = emptyJobFilters,
+  mySkills: string[] = [],
 ): Promise<Page<Job>> {
   const { from, to } = pageRange(page);
   let query = supabase
     .from('jobs')
     .select('*')
-    .or(`status.eq.posted,and(hired_provider_id.eq.${providerId},status.eq.hiring)`)
-    .order('created_at', { ascending: false })
-    // Unique tiebreaker so rows can't shuffle between pages. See listProviders.
-    .order('id', { ascending: false })
-    .range(from, to);
+    .or(`status.eq.posted,and(hired_provider_id.eq.${providerId},status.eq.hiring)`);
 
-  // A second `or()` is ANDed with the visibility one above, so this narrows the
-  // open jobs rather than widening them.
-  const term = search ? sanitizeSearchTerm(search) : '';
-  if (term) {
-    query = query.or(`title.ilike.%${term}%,description.ilike.%${term}%,location.ilike.%${term}%`);
+  query = applyJobFilters(query, search, filters, mySkills);
+
+  // Sort last so the tiebreaker stays adjacent to the primary key ordering.
+  if (filters.sort === 'budget_high') {
+    query = query.order('budget', { ascending: false, nullsFirst: false });
+  } else if (filters.sort === 'budget_low') {
+    query = query.order('budget', { ascending: true, nullsFirst: false });
+  } else {
+    query = query.order('created_at', { ascending: false });
   }
+  // Unique tiebreaker so rows can't shuffle between pages. See listProviders.
+  query = query.order('id', { ascending: false }).range(from, to);
 
   const { data, error } = await query;
   if (error) throw error;
   return toPage(data, page);
 }
+
+/** Count matching the same filters, for the "Show N jobs" button in the sheet. */
+export async function countOpenJobs(
+  providerId: string,
+  search: string | undefined,
+  filters: JobFilters,
+  mySkills: string[] = [],
+): Promise<number> {
+  let query = supabase
+    .from('jobs')
+    .select('id', { count: 'exact', head: true })
+    .or(`status.eq.posted,and(hired_provider_id.eq.${providerId},status.eq.hiring)`);
+
+  query = applyJobFilters(query, search, filters, mySkills);
+
+  const { count, error } = await query;
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/**
+ * Shared narrowing for the feed and its count, so the number on the button can
+ * never disagree with the list it produces.
+ *
+ * Every clause here ANDs with the visibility `or()` applied by the callers —
+ * including the search `or()`, which PostgREST combines with AND rather than
+ * widening the result set.
+ */
+function applyJobFilters<T>(
+  query: T,
+  search: string | undefined,
+  filters: JobFilters,
+  mySkills: string[],
+): T {
+  // PostgREST builders are generic over the accumulated shape; narrowing each
+  // chained call would mean threading a dozen type params through for no gain.
+  let q = query as PostgrestFilterLike;
+
+  const term = search ? sanitizeSearchTerm(search) : '';
+  if (term) {
+    q = q.or(`title.ilike.%${term}%,description.ilike.%${term}%,location.ilike.%${term}%`);
+  }
+
+  // "Matches my skills" intersects with an explicit category pick rather than
+  // overriding it, so the two controls can't silently contradict each other.
+  let categories = filters.categories;
+  if (filters.matchesMySkills && mySkills.length) {
+    categories = categories.length
+      ? categories.filter((c) => mySkills.includes(c))
+      : mySkills;
+    // An empty intersection means nothing can match; `in.()` would be invalid.
+    if (!categories.length) return q.eq('id', NO_MATCH_ID) as unknown as T;
+  }
+  if (categories.length) q = q.in('category', categories);
+
+  // NOTE: budget bounds also exclude open-budget jobs, since NULL fails any
+  // comparison. That is the behaviour a provider filtering on money expects.
+  if (filters.minBudget != null) q = q.gte('budget', filters.minBudget);
+  if (filters.maxBudget != null) q = q.lte('budget', filters.maxBudget);
+  if (filters.budgetedOnly) q = q.not('budget', 'is', null);
+
+  const loc = filters.location.trim() ? sanitizeSearchTerm(filters.location) : '';
+  if (loc) q = q.ilike('location', `%${loc}%`);
+
+  const since = postedSince(filters.postedWithinDays);
+  if (since) q = q.gte('created_at', since);
+
+  // Round-trips back to the caller's builder type: the chained calls all return
+  // the same builder, but PostgrestFilterLike models only the subset used here.
+  return q as unknown as T;
+}
+
+/** A uuid that cannot exist, used to force an empty result set. */
+const NO_MATCH_ID = '00000000-0000-0000-0000-000000000000';
+
+/** The chainable subset of the PostgREST builder that applyJobFilters uses. */
+type PostgrestFilterLike = {
+  or: (f: string) => PostgrestFilterLike;
+  eq: (col: string, val: unknown) => PostgrestFilterLike;
+  in: (col: string, vals: readonly unknown[]) => PostgrestFilterLike;
+  gte: (col: string, val: unknown) => PostgrestFilterLike;
+  lte: (col: string, val: unknown) => PostgrestFilterLike;
+  ilike: (col: string, pattern: string) => PostgrestFilterLike;
+  not: (col: string, op: string, val: unknown) => PostgrestFilterLike;
+};
 
 /** Jobs a provider has been hired for, split by segment. */
 export async function listProviderJobs(

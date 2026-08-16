@@ -1,141 +1,187 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Button, Card, MoneyText } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
+import { Button, ConfirmModal, MoneyText, SuccessModal } from '@/components/ui';
+import { Spacing, Type } from '@/constants/theme';
+import { routes } from '@/lib/routes';
 import { useJobQuotes } from '@/queries/use-quotes';
-import {
-  useEscrow,
-  useFundEscrow,
-  useReleaseMaterials,
-  useReleaseWorkmanship,
-} from '@/queries/use-wallet';
+import { useEscrow, useFundEscrow, useReleaseMaterials } from '@/queries/use-wallet';
 import type { Job } from '@/services/database.types';
 import { useTheme } from '@/hooks/use-theme';
 
-/** Owner-facing escrow controls shown on a hired job. */
+type Pending = 'fund' | 'materials' | null;
+
+/**
+ * Client-facing escrow actions. State is shown by EscrowTimeline — this is only
+ * the buttons, each gated behind a confirmation that states the amount, because
+ * none of these movements can be undone from inside the app.
+ */
 export function EscrowSection({ job }: { job: Job }) {
   const theme = useTheme();
+  const router = useRouter();
   const { data: escrow } = useEscrow(job.id);
   const { data: quotes } = useJobQuotes(job.id);
   const approved = quotes?.find((q) => q.status === 'approved');
 
   const fund = useFundEscrow(job.id);
   const releaseMaterials = useReleaseMaterials(job.id);
-  const releaseFinal = useReleaseWorkmanship(job.id);
+
+  const [confirming, setConfirming] = useState<Pending>(null);
+  const [success, setSuccess] = useState<{ title: string; message: string; amount?: number } | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
 
-  // Escrow only applies once a provider is hired.
-  if (!job.hired_provider_id || (!approved && !escrow)) return null;
+  if (!approved && !escrow) return null;
 
-  function run(mutate: { mutateAsync: () => Promise<unknown> }) {
+  const funded = Boolean(escrow) && escrow!.status !== 'pending';
+  const materialsDue =
+    !!escrow && escrow.materials_amount > 0 && !escrow.materials_released && funded;
+  const finalDue = !!escrow && funded && !escrow.workmanship_released;
+
+  async function confirm() {
     setError(null);
-    mutate.mutateAsync().catch((e: unknown) =>
-      setError(e instanceof Error ? e.message : 'Something went wrong'),
-    );
+    try {
+      if (confirming === 'fund') {
+        await fund.mutateAsync();
+        setConfirming(null);
+        setSuccess({
+          title: 'Provider hired',
+          message: 'Your payment is now held in escrow and work can begin.',
+          amount: approved?.total,
+        });
+      } else if (confirming === 'materials') {
+        await releaseMaterials.mutateAsync();
+        setConfirming(null);
+        setSuccess({
+          title: 'Materials released',
+          message: 'The funds are on their way to the provider’s wallet.',
+          amount: escrow?.materials_amount,
+        });
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong');
+    }
   }
 
-  const funded = !!escrow && escrow.status !== 'pending';
-  const remaining = escrow
-    ? escrow.total - (escrow.materials_released ? escrow.materials_amount : 0)
-    : 0;
+  const busy = fund.isPending || releaseMaterials.isPending;
 
   return (
-    <Card>
-      <Text style={[styles.title, { color: theme.text }]}>Escrow</Text>
-
+    <View style={styles.wrap}>
       {!funded && approved ? (
         <>
-          <Text style={[styles.body, { color: theme.textSecondary }]}>
-            Fund the agreed amount into escrow so work can begin. The provider is paid as
-            milestones are released.
-          </Text>
-          <Row label="Agreed total">
-            <MoneyText amount={approved.total} style={{ fontSize: 15 }} />
-          </Row>
           <Button
-            title="Fund escrow"
+            title="Fund escrow & hire"
             size="lg"
             icon="lock-closed"
-            loading={fund.isPending}
-            onPress={() => run(fund)}
-            style={{ marginTop: Spacing.three }}
+            onPress={() => setConfirming('fund')}
+          />
+          <Text style={[Type.caption, { color: theme.textSecondary }]}>
+            The provider is only hired once the money is held.
+          </Text>
+        </>
+      ) : null}
+
+      {materialsDue ? (
+        <>
+          {escrow!.materials_requested_at ? (
+            <View style={[styles.request, { backgroundColor: theme.tint + '14' }]}>
+              <Text style={[Type.callout, { color: theme.tint }]}>
+                The provider has requested the materials funds.
+              </Text>
+            </View>
+          ) : null}
+          <Button
+            title="Release materials funds"
+            variant="secondary"
+            icon="cube"
+            onPress={() => setConfirming('materials')}
           />
         </>
       ) : null}
 
-      {funded && escrow ? (
+      {finalDue ? (
         <>
-          <Row label="In escrow">
-            <MoneyText amount={escrow.total} style={{ fontSize: 15 }} />
-          </Row>
-          <Row label="Materials">
-            <Text style={{ color: escrow.materials_released ? theme.success : theme.textSecondary, fontWeight: '600' }}>
-              {escrow.materials_amount <= 0
-                ? 'None'
-                : escrow.materials_released
-                  ? 'Released'
-                  : 'Held'}
-            </Text>
-          </Row>
-
-          {escrow.status === 'completed' ? (
-            <Text style={[styles.done, { color: theme.success }]}>
-              All funds released. Job complete.
-            </Text>
-          ) : (
-            <View style={{ gap: Spacing.two, marginTop: Spacing.three }}>
-              {escrow.materials_amount > 0 && !escrow.materials_released ? (
-                <Button
-                  title="Release materials funds"
-                  variant="secondary"
-                  icon="cube"
-                  loading={releaseMaterials.isPending}
-                  onPress={() => run(releaseMaterials)}
-                />
-              ) : null}
-              <Button
-                title="Release final payment"
-                size="lg"
-                icon="checkmark-circle"
-                loading={releaseFinal.isPending}
-                onPress={() => run(releaseFinal)}
-              />
-              <Text style={[styles.hint, { color: theme.textSecondary }]}>
-                Releasing the final payment ({''}
-                <MoneyText amount={remaining} compact style={{ fontSize: 13, fontWeight: '600', color: theme.textSecondary }} />
-                ) marks the job complete.
+          {escrow!.completion_requested_at ? (
+            <View style={[styles.request, { backgroundColor: theme.tint + '14' }]}>
+              <Text style={[Type.callout, { color: theme.tint }]}>
+                The provider marked the work complete and is waiting for your review.
               </Text>
             </View>
-          )}
+          ) : null}
+          {/* Rating and payout are one transaction, so this opens the review screen
+              rather than releasing from here. */}
+          <Button
+            title="Review & release final payment"
+            size="lg"
+            icon="checkmark-circle"
+            onPress={() => router.push(routes.reviewJob(job.id))}
+          />
         </>
       ) : null}
 
-      {error ? (
-        <Text selectable style={[styles.error, { color: theme.danger }]}>
-          {error}
-        </Text>
-      ) : null}
-    </Card>
-  );
-}
+      <ConfirmModal
+        visible={confirming === 'fund'}
+        onCancel={() => setConfirming(null)}
+        onConfirm={confirm}
+        icon="lock-closed"
+        title="Fund escrow & hire"
+        message="This moves money from your wallet into escrow. It is held safely and only released when you approve the work."
+        confirmLabel="Pay & hire"
+        loading={busy}
+        error={error}
+        details={[
+          {
+            label: 'Amount to hold',
+            value: <MoneyText amount={approved?.total ?? 0} style={Type.bodyMedium} />,
+          },
+        ]}
+      />
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  const theme = useTheme();
-  return (
-    <View style={styles.row}>
-      <Text style={[styles.rowLabel, { color: theme.textSecondary }]}>{label}</Text>
-      {children}
+      <ConfirmModal
+        visible={confirming === 'materials'}
+        onCancel={() => setConfirming(null)}
+        onConfirm={confirm}
+        icon="cube"
+        title="Release materials funds?"
+        message="This pays the materials portion to the provider now. It cannot be reversed from the app."
+        confirmLabel="Release funds"
+        loading={busy}
+        error={error}
+        details={[
+          {
+            label: 'Releasing now',
+            value: <MoneyText amount={escrow?.materials_amount ?? 0} style={Type.bodyMedium} />,
+          },
+          {
+            label: 'Still in escrow',
+            value: (
+              <MoneyText
+                amount={(escrow?.total ?? 0) - (escrow?.materials_amount ?? 0)}
+                style={[Type.bodyMedium, { color: theme.textSecondary }]}
+              />
+            ),
+          },
+        ]}
+      />
+
+      <SuccessModal
+        visible={Boolean(success)}
+        onClose={() => setSuccess(null)}
+        title={success?.title ?? ''}
+        message={success?.message}
+        amount={success?.amount}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 17, fontWeight: '700', marginBottom: Spacing.one },
-  body: { fontSize: 14, lineHeight: 20, marginBottom: Spacing.two },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: Spacing.two },
-  rowLabel: { fontSize: 15 },
-  hint: { fontSize: 13, lineHeight: 18 },
-  done: { fontSize: 15, fontWeight: '600', textAlign: 'center', marginTop: Spacing.three },
-  error: { fontSize: 14, marginTop: Spacing.three },
+  wrap: { gap: Spacing.two },
+  request: {
+    padding: Spacing.twoHalf,
+    borderRadius: 12,
+    borderCurve: 'continuous',
+  },
 });

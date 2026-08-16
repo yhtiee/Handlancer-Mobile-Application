@@ -10,7 +10,10 @@ import {
   listTransactions,
   releaseMaterials,
   releaseWorkmanship,
+  requestCompletionReview,
+  requestMaterialsRelease,
   requestWithdrawal,
+  reviewAndRelease,
 } from '@/services/wallet';
 
 export function useWallet() {
@@ -60,6 +63,15 @@ function useWalletInvalidation(jobId?: string) {
   };
 }
 
+/**
+ * Refetch wallet + transactions. Needed after returning from the Flutterwave
+ * browser: the webhook credits the balance server-side while the browser is
+ * open, so the cached values are stale the moment we come back.
+ */
+export function useRefreshWallet() {
+  return useWalletInvalidation();
+}
+
 export function useFundEscrow(jobId: string) {
   const invalidate = useWalletInvalidation(jobId);
   return useMutation({ mutationFn: () => fundEscrow(jobId), onSuccess: invalidate });
@@ -75,10 +87,45 @@ export function useReleaseWorkmanship(jobId: string) {
   return useMutation({ mutationFn: () => releaseWorkmanship(jobId), onSuccess: invalidate });
 }
 
+/** Provider-side: ask the owner to release the materials portion. */
+export function useRequestMaterialsRelease(jobId: string) {
+  const invalidate = useWalletInvalidation(jobId);
+  return useMutation({
+    mutationFn: () => requestMaterialsRelease(jobId),
+    onSuccess: invalidate,
+  });
+}
+
+/** Provider-side: mark the work finished and ask the owner to review. */
+export function useRequestCompletionReview(jobId: string) {
+  const invalidate = useWalletInvalidation(jobId);
+  return useMutation({
+    mutationFn: () => requestCompletionReview(jobId),
+    onSuccess: invalidate,
+  });
+}
+
+/** Owner-side: rate the work and release the final payment together. */
+export function useReviewAndRelease(jobId: string) {
+  const qc = useQueryClient();
+  const invalidate = useWalletInvalidation(jobId);
+  return useMutation({
+    mutationFn: ({ rating, comment }: { rating: number; comment: string | null }) =>
+      reviewAndRelease(jobId, rating, comment),
+    onSuccess: () => {
+      invalidate();
+      // Prefix match: the review lands under the provider's key, which this
+      // screen doesn't know, and it also changes the provider's rating average.
+      qc.invalidateQueries({ queryKey: ['reviews'] });
+    },
+  });
+}
+
 export function useRequestWithdrawal() {
   const invalidate = useWalletInvalidation();
   return useMutation({
-    mutationFn: (amount: number) => requestWithdrawal(amount),
+    mutationFn: ({ amount, pin }: { amount: number; pin: string }) =>
+      requestWithdrawal(amount, pin),
     onSuccess: invalidate,
   });
 }

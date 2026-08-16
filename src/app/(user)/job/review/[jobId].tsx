@@ -4,10 +4,19 @@ import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RatingInput } from '@/components/reviews/rating-input';
-import { Button } from '@/components/ui';
-import { Radius, Spacing } from '@/constants/theme';
+import {
+  Button,
+  Card,
+  ConfirmModal,
+  formatMoney,
+  MoneyText,
+  RatingStars,
+  SuccessModal,
+} from '@/components/ui';
+import { Radius, Spacing, Type } from '@/constants/theme';
 import { useJob } from '@/queries/use-jobs';
 import { useCreateReview } from '@/queries/use-reviews';
+import { useEscrow, useReviewAndRelease } from '@/queries/use-wallet';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function ReviewJob() {
@@ -16,16 +25,33 @@ export default function ReviewJob() {
   const insets = useSafeAreaInsets();
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
   const { data: job } = useJob(jobId);
+  const { data: escrow } = useEscrow(jobId);
   const createReview = useCreateReview();
+  const reviewAndRelease = useReviewAndRelease(jobId);
 
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [released, setReleased] = useState(false);
 
+  // Money still held means this is the approve-and-pay step. On an already
+  // completed job the same screen is just a plain review.
+  const releasing = Boolean(escrow) && !escrow!.workmanship_released;
+  const amount = escrow
+    ? escrow.total - (escrow.materials_released ? escrow.materials_amount : 0)
+    : 0;
+  const pending = createReview.isPending || reviewAndRelease.isPending;
+
+  /** Validates, then either opens the release confirmation or posts a plain review. */
   async function submit() {
     setError(null);
     if (rating < 1) return setError('Tap a star to rate the work');
     if (!job?.hired_provider_id) return setError('No provider to review on this job');
+
+    // Money is about to move — confirm the amount before it goes.
+    if (releasing) return setConfirming(true);
+
     try {
       await createReview.mutateAsync({
         providerId: job.hired_provider_id,
@@ -39,9 +65,22 @@ export default function ReviewJob() {
     }
   }
 
+  async function confirmRelease() {
+    setError(null);
+    try {
+      await reviewAndRelease.mutateAsync({ rating, comment: comment.trim() || null });
+      setConfirming(false);
+      setReleased(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not release the payment.');
+    }
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <Stack.Screen options={{ title: 'Leave a Review' }} />
+      <Stack.Screen
+        options={{ title: releasing ? 'Approve & Pay' : 'Leave a Review' }}
+      />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + Spacing.four }]}>
         <Text style={[styles.prompt, { color: theme.text }]}>How was the work?</Text>
@@ -62,6 +101,21 @@ export default function ReviewJob() {
           style={[styles.textArea, { color: theme.text, backgroundColor: theme.backgroundElement }]}
         />
 
+        {releasing ? (
+          <Card>
+            <View style={styles.row}>
+              <Text style={[styles.rowLabel, { color: theme.textSecondary }]}>
+                Final payment to release
+              </Text>
+              <MoneyText amount={amount} style={{ fontSize: 16, fontWeight: '700' }} />
+            </View>
+            <Text style={[styles.warning, { color: theme.textSecondary }]}>
+              Submitting sends this payment to the provider and marks the job complete.
+              This can&apos;t be undone — open a dispute instead if something is wrong.
+            </Text>
+          </Card>
+        ) : null}
+
         {error ? (
           <Text selectable style={[styles.error, { color: theme.danger }]}>
             {error}
@@ -69,12 +123,40 @@ export default function ReviewJob() {
         ) : null}
 
         <Button
-          title="Submit review"
+          title={releasing ? `Approve & release ${formatMoney(amount)}` : 'Submit review'}
           size="lg"
-          loading={createReview.isPending}
+          icon={releasing ? 'checkmark-circle' : undefined}
+          loading={pending}
           onPress={submit}
         />
       </ScrollView>
+
+      <ConfirmModal
+        visible={confirming}
+        onCancel={() => setConfirming(false)}
+        onConfirm={confirmRelease}
+        icon="checkmark-circle"
+        title="Release final payment?"
+        message="This pays the provider and marks the job complete. It cannot be undone — open a dispute instead if something is wrong."
+        confirmLabel="Approve & pay"
+        loading={reviewAndRelease.isPending}
+        error={error}
+        details={[
+          { label: 'Your rating', value: <RatingStars rating={rating} size={14} showValue={false} /> },
+          { label: 'Releasing now', value: <MoneyText amount={amount} style={Type.bodyMedium} /> },
+        ]}
+      />
+
+      <SuccessModal
+        visible={released}
+        onClose={() => {
+          setReleased(false);
+          router.back();
+        }}
+        title="Payment released"
+        message="The provider has been paid and this job is now complete. Thanks for leaving a review."
+        amount={amount}
+      />
     </View>
   );
 }
@@ -90,5 +172,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlignVertical: 'top',
   },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  rowLabel: { fontSize: 15 },
+  warning: { fontSize: 13, lineHeight: 18, marginTop: Spacing.two },
   error: { fontSize: 14 },
 });

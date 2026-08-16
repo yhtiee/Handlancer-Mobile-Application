@@ -1,3 +1,4 @@
+export { ConfirmModal, type ConfirmDetail, SuccessModal } from '@/components/ui/action-modal';
 export { Avatar } from '@/components/ui/avatar';
 export { Button } from '@/components/ui/button';
 export { Card } from '@/components/ui/card';

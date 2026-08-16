@@ -44,6 +44,8 @@ export const routes = {
   wallet: (shell: 'user' | 'provider'): Href => `/(${shell})/wallet` as Href,
   walletFund: (shell: 'user' | 'provider'): Href => `/(${shell})/wallet/fund` as Href,
   walletWithdraw: (shell: 'user' | 'provider'): Href => `/(${shell})/wallet/withdraw` as Href,
+  walletBank: (shell: 'user' | 'provider'): Href => `/(${shell})/wallet/bank` as Href,
+  walletPin: (shell: 'user' | 'provider'): Href => `/(${shell})/wallet/pin` as Href,
 
   // Chat (both shells)
   chatThread: (shell: 'user' | 'provider', id: string): Href => `/(${shell})/chat/${id}` as Href,
@@ -54,4 +56,6 @@ export const routes = {
     `/(${shell})/profile/notifications` as Href,
   profileSettings: (shell: 'user' | 'provider'): Href => `/(${shell})/profile/settings` as Href,
   profileSupport: (shell: 'user' | 'provider'): Href => `/(${shell})/profile/support` as Href,
+  /** Provider-only: every review this provider has received. */
+  profileReviews: '/(provider)/profile/reviews' as Href,
 };

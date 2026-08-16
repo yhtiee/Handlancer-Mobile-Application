@@ -1,3 +1,4 @@
+import { readFileBytes } from '@/lib/file-bytes';
 import type { JobMedia, MediaKind, MediaPhase } from '@/services/database.types';
 import { supabase } from '@/services/supabase';
 
@@ -26,10 +27,11 @@ export async function uploadJobMedia(input: {
   const ext = extensionFor(asset);
   const path = `${jobId}/${phase}-${Date.now()}.${ext}`;
 
-  // RN-friendly upload: read the local file into an ArrayBuffer.
-  const arrayBuffer = await fetch(asset.uri).then((res) => res.arrayBuffer());
+  // Throws rather than storing an empty object — a broken image in the gallery is
+  // far harder to trace back than a failed upload.
+  const bytes = await readFileBytes(asset.uri);
 
-  const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, arrayBuffer, {
+  const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, bytes, {
     contentType: asset.mimeType ?? (asset.kind === 'video' ? 'video/mp4' : 'image/jpeg'),
     upsert: false,
   });

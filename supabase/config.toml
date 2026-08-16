@@ -10,6 +10,11 @@ verify_jwt = true
 # from the forwarded header to decide whose bank account it is saving.
 verify_jwt = true
 
+[functions.send-push]
+# Invoked by a Postgres trigger through pg_net, which has no user JWT to send.
+# The shared PUSH_HOOK_SECRET header authenticates the caller instead.
+verify_jwt = false
+
 [functions.flutterwave-webhook]
 # Flutterwave authenticates with its own `verif-hash` header and has no Supabase
 # JWT to send. Leaving the platform JWT gate on would reject every webhook with

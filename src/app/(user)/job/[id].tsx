@@ -1,4 +1,5 @@
-import { Link, Stack, useLocalSearchParams } from 'expo-router';
+import { Link, Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
@@ -21,12 +22,16 @@ import { formatDate, timeAgo } from '@/lib/date';
 import { routes } from '@/lib/routes';
 import { useJob, useUpdateJobStatus } from '@/queries/use-jobs';
 import { useJobMedia } from '@/queries/use-media';
+import { useStartConversation } from '@/queries/use-chat';
 import { useMyReviewForJob } from '@/queries/use-reviews';
 import { useEscrow } from '@/queries/use-wallet';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function JobDetail() {
   const theme = useTheme();
+  const router = useRouter();
+  const startChat = useStartConversation();
+  const [chatError, setChatError] = useState<string | null>(null);
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: job, isLoading } = useJob(id);
   const { data: media } = useJobMedia(id);
@@ -45,6 +50,21 @@ export default function JobDetail() {
         )}
       </View>
     );
+  }
+
+  /** Reuses the existing thread with this provider, or opens one. */
+  async function messageProvider() {
+    if (!job?.hired_provider_id) return;
+    setChatError(null);
+    try {
+      const convo = await startChat.mutateAsync({
+        providerId: job.hired_provider_id,
+        jobId: job.id,
+      });
+      router.push(routes.chatThread('user', convo.id));
+    } catch (e) {
+      setChatError(e instanceof Error ? e.message : 'Could not open the chat.');
+    }
   }
 
   const live = Boolean(escrow) && escrow!.status !== 'pending';
@@ -111,6 +131,24 @@ export default function JobDetail() {
               <EscrowTimeline job={job} escrow={escrow} role="client" />
             </Card>
           </View>
+        ) : null}
+
+        {/* ── Talk to the provider. Sits directly under the milestone
+              timeline because most questions are about the milestone the
+              user is looking at. ─────────────────────────────────────── */}
+        {job.hired_provider_id ? (
+          <Button
+            title="Message provider"
+            variant="secondary"
+            icon="chatbubble"
+            loading={startChat.isPending}
+            onPress={messageProvider}
+          />
+        ) : null}
+        {chatError ? (
+          <Text selectable style={[Type.callout, { color: theme.danger }]}>
+            {chatError}
+          </Text>
         ) : null}
 
         {/* ── Actions ────────────────────────────────────────────── */}

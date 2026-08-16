@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import { Icon } from '@/components/ui';
 import { MediaThumb } from '@/components/media/media-gallery';
+import { MediaViewer } from '@/components/media/media-viewer';
 import { Radius, Spacing } from '@/constants/theme';
 import { useUploadMedia } from '@/queries/use-media';
 import type { JobMedia, MediaPhase } from '@/services/database.types';
@@ -15,6 +16,14 @@ export function ProofUploader({ jobId, media }: { jobId: string; media: JobMedia
   const upload = useUploadMedia(jobId);
   const [busyPhase, setBusyPhase] = useState<MediaPhase | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+
+  // Same before-then-after order the tiles render in, so tapping the third
+  // thumbnail opens the third photo rather than whatever the query returned.
+  const ordered = [
+    ...media.filter((m) => m.phase === 'before'),
+    ...media.filter((m) => m.phase === 'after'),
+  ];
 
   async function add(phase: MediaPhase, source: 'library' | 'camera') {
     setError(null);
@@ -62,7 +71,7 @@ export function ProofUploader({ jobId, media }: { jobId: string; media: JobMedia
       </Text>
 
       {(['before', 'after'] as MediaPhase[]).map((phase) => {
-        const items = media.filter((m) => m.phase === phase);
+        const items = ordered.filter((m) => m.phase === phase);
         const busy = busyPhase === phase;
         return (
           <View key={phase} style={{ gap: Spacing.two }}>
@@ -71,7 +80,12 @@ export function ProofUploader({ jobId, media }: { jobId: string; media: JobMedia
             </Text>
             <View style={styles.row}>
               {items.map((m) => (
-                <MediaThumb key={m.id} item={m} size={84} />
+                <MediaThumb
+                  key={m.id}
+                  item={m}
+                  size={84}
+                  onPress={() => setViewerIndex(ordered.findIndex((x) => x.id === m.id))}
+                />
               ))}
               <Pressable
                 onPress={() => add(phase, 'library')}
@@ -100,6 +114,13 @@ export function ProofUploader({ jobId, media }: { jobId: string; media: JobMedia
           {error}
         </Text>
       ) : null}
+
+      <MediaViewer
+        media={ordered}
+        startIndex={viewerIndex ?? 0}
+        visible={viewerIndex !== null}
+        onClose={() => setViewerIndex(null)}
+      />
     </View>
   );
 }

@@ -24,6 +24,54 @@ function loadNotifications(): NotificationsModule | null {
   }
 }
 
+/**
+ * Show notifications that arrive while the app is open.
+ *
+ * Without a handler, expo-notifications delivers foreground pushes silently —
+ * they land in the tray only after backgrounding, which reads as "push doesn't
+ * work" during exactly the testing people do first.
+ */
+export function configurePushHandler(): void {
+  const Notifications = loadNotifications();
+  if (!Notifications) return;
+
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      // `shouldShowAlert` is deprecated in SDK 56 — banner + list replace it.
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  });
+}
+
+/** Fires when the user taps a notification. Returns an unsubscribe fn. */
+export function addPushResponseListener(
+  onTap: (data: Record<string, unknown>) => void,
+): () => void {
+  const Notifications = loadNotifications();
+  if (!Notifications) return () => {};
+
+  const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+    const data = response?.notification?.request?.content?.data ?? {};
+    onTap(data as Record<string, unknown>);
+  });
+  return () => sub.remove();
+}
+
+/**
+ * The notification that launched the app from a cold start, if any. A tap on a
+ * killed app never reaches the response listener.
+ */
+export async function getInitialPushData(): Promise<Record<string, unknown> | null> {
+  const Notifications = loadNotifications();
+  if (!Notifications) return null;
+  const response = await Notifications.getLastNotificationResponseAsync();
+  const data = response?.notification?.request?.content?.data;
+  return (data as Record<string, unknown>) ?? null;
+}
+
 /** Request permission and return the Expo push token, or null if unavailable. */
 export async function registerForPushNotifications(): Promise<string | null> {
   if (!Device.isDevice) return null;

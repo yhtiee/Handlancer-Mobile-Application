@@ -39,7 +39,12 @@ export const PUSH_REASON_TEXT: Record<PushUnavailableReason, string> = {
     'Expo Go cannot receive push notifications (removed in SDK 53). Install a development or preview build to get them on this phone.',
   module: 'The notifications module is unavailable in this build.',
   permission: 'Notification permission was denied. Turn it on in your phone’s app settings.',
-  token: 'Could not get a push token from Expo. Check the EAS projectId in app.json.',
+  // On Android this is nearly always Firebase, not the projectId: without
+  // google-services.json the app is never registered with FCM, so the token
+  // request throws after the permission prompt has already been accepted —
+  // which looks exactly like push working right up until nothing arrives.
+  token:
+    'Could not get a push token. On Android this usually means Firebase (FCM) is not set up for this build — see supabase/PUSH_SETUP.md.',
 };
 
 /**

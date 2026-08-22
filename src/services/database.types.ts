@@ -225,6 +225,15 @@ export type Database = {
         Args: { p_job_id: string; p_rating: number; p_comment: string | null };
         Returns: undefined;
       };
+      push_diagnostics: {
+        Args: Record<string, never>;
+        Returns: {
+          has_token: boolean;
+          trigger_installed: boolean;
+          hook_url_set: boolean;
+          hook_secret_set: boolean;
+        }[];
+      };
     };
     Enums: {
       user_role: UserRole;

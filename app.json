@@ -56,7 +56,15 @@
           "cameraPermission": "Allow HandLancer to use the camera to capture proof of work."
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/logo.png",
+          "color": "#0FB5A4",
+          "defaultChannel": "default"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

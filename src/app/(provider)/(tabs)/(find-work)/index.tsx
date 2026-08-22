@@ -5,8 +5,8 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { HeroBanner } from '@/components/home/hero-banner';
 import { HomeHeader } from '@/components/home/home-header';
 import { QuickActions } from '@/components/home/quick-actions';
-import { JobCard } from '@/components/jobs/job-card';
 import { JobFilterBar } from '@/components/jobs/job-filter-bar';
+import { JobGridCard } from '@/components/jobs/job-grid-card';
 import { JobFilterSheet } from '@/components/jobs/job-filter-sheet';
 import { Button, EmptyState, ListFooter, ListSkeleton, ScreenView, SearchField } from '@/components/ui';
 import { Layout, Spacing, Type } from '@/constants/theme';
@@ -39,22 +39,10 @@ export default function FindWork() {
 
   const listHeader = (
     <View style={{ gap: Layout.listGap, paddingBottom: Layout.listGap }}>
-      <SearchField
-        value={search}
-        onChangeText={setSearch}
-        placeholder="Search jobs, trades or areas"
-      />
-
-      <JobFilterBar
-        filters={filters}
-        onChange={setFilters}
-        onOpenFilters={() => setSheetOpen(true)}
-      />
-
       {/* Promos only when the provider is browsing. Once they are searching or
           filtering they came here to work, and these just push jobs down. */}
       {!narrowed ? (
-        <View style={{ gap: Layout.listGap, paddingTop: Spacing.two }}>
+        <View style={{ gap: Layout.listGap }}>
           <QuickActions
             primary={{
               icon: 'document-text-outline',
@@ -80,9 +68,25 @@ export default function FindWork() {
         </View>
       ) : null}
 
+      {/* Search and filters sit directly on top of the results they narrow, so
+          the effect of a keystroke is visible without scrolling back up. */}
+      <View style={{ gap: Layout.listGap, paddingTop: narrowed ? 0 : Spacing.two }}>
+        <SearchField
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search jobs, trades or areas"
+        />
+
+        <JobFilterBar
+          filters={filters}
+          onChange={setFilters}
+          onOpenFilters={() => setSheetOpen(true)}
+        />
+      </View>
+
       {/* Result count doubles as the section header — it tells the provider
           whether a filter did what they expected. */}
-      <View style={[styles.resultRow, { paddingTop: Spacing.two }]}>
+      <View style={styles.resultRow}>
         <Text style={[Type.h3, { color: theme.text }]}>
           {total == null
             ? 'Open jobs'
@@ -111,13 +115,19 @@ export default function FindWork() {
         onEndReachedThreshold={0.5}
         ListHeaderComponent={listHeader}
         ListFooterComponent={<ListFooter loading={loadingMore} />}
+        // Two-up: a provider comparing open jobs can see roughly twice as many
+        // budgets per screen, which is the number they are actually scanning for.
+        numColumns={2}
+        columnWrapperStyle={styles.column}
         contentContainerStyle={{
           paddingHorizontal: Layout.gutter,
           paddingTop: Layout.headerGap,
           paddingBottom: bottomInset,
           gap: Layout.listGap,
         }}
-        renderItem={({ item }) => <JobCard job={item} href={routes.findWorkJob(item.id)} />}
+        renderItem={({ item }) => (
+          <JobGridCard job={item} href={routes.findWorkJob(item.id)} />
+        )}
         ListEmptyComponent={
           query.isLoading ? (
             <ListSkeleton />
@@ -163,4 +173,7 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     justifyContent: 'space-between',
   },
+  // Cards are a fixed 48% wide, so `space-between` puts the gutter between them
+  // and leaves a lone last card at its normal size rather than stretched.
+  column: { justifyContent: 'space-between', alignItems: 'flex-start' },
 });

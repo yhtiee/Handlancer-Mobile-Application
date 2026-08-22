@@ -1,7 +1,24 @@
 import { emptyJobFilters, postedSince, type JobFilters } from '@/lib/job-filters';
-import type { Job, JobStatus } from '@/services/database.types';
+import type { Job, JobStatus, Profile } from '@/services/database.types';
 import { pageRange, sanitizeSearchTerm, toPage, type Page } from '@/services/pagination';
 import { supabase } from '@/services/supabase';
+
+/**
+ * A job plus who posted it.
+ *
+ * Providers were being asked to bid on jobs with no idea who they were for.
+ * Joined client-side rather than with a PostgREST embed to match the rest of the
+ * services here — `Database` declares `Relationships: []`, so embeds do not type.
+ */
+export type JobWithOwner = Job & { owner: Profile | null };
+
+/** Attach owner profiles to a page of jobs in one round trip. */
+async function withOwners(jobs: Job[]): Promise<JobWithOwner[]> {
+  if (!jobs.length) return [];
+  const ids = [...new Set(jobs.map((j) => j.owner_id))];
+  const { data: owners } = await supabase.from('profiles').select('*').in('id', ids);
+  return jobs.map((j) => ({ ...j, owner: owners?.find((p) => p.id === j.owner_id) ?? null }));
+}
 
 /** The segments the customer's My Jobs screen splits their jobs into. */
 export type UserJobSegment = 'open' | 'active' | 'completed';
@@ -58,10 +75,16 @@ export async function listMyJobs(
   return toPage(data, page);
 }
 
-export async function getJob(id: string): Promise<Job | null> {
+export async function getJob(id: string): Promise<JobWithOwner | null> {
   const { data, error } = await supabase.from('jobs').select('*').eq('id', id).maybeSingle();
   if (error) throw error;
-  return data;
+  if (!data) return null;
+  const { data: owner } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', data.owner_id)
+    .maybeSingle();
+  return { ...data, owner: owner ?? null };
 }
 
 export async function createJob(ownerId: string, input: CreateJobInput): Promise<Job> {
@@ -97,7 +120,7 @@ export async function listOpenJobs(
   page: number,
   filters: JobFilters = emptyJobFilters,
   mySkills: string[] = [],
-): Promise<Page<Job>> {
+): Promise<Page<JobWithOwner>> {
   const { from, to } = pageRange(page);
   let query = supabase
     .from('jobs')
@@ -119,7 +142,8 @@ export async function listOpenJobs(
 
   const { data, error } = await query;
   if (error) throw error;
-  return toPage(data, page);
+  // Enrich only this page's rows, so the extra round trip stays bounded.
+  return toPage(await withOwners(data ?? []), page);
 }
 
 /** Count matching the same filters, for the "Show N jobs" button in the sheet. */

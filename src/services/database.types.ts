@@ -200,8 +200,9 @@ export type Database = {
     Views: Record<string, never>;
     Functions: {
       fund_escrow: { Args: { p_job_id: string }; Returns: undefined };
-      release_materials: { Args: { p_job_id: string }; Returns: undefined };
-      release_workmanship: { Args: { p_job_id: string }; Returns: undefined };
+      // Escrow releases take the transfer PIN since 0018; the ungated overloads
+      // were dropped, and release_workmanship is no longer callable by clients.
+      release_materials: { Args: { p_job_id: string; p_pin: string }; Returns: undefined };
       request_withdrawal: { Args: { p_amount: number; p_pin: string }; Returns: undefined };
       wallet_security_status: {
         Args: Record<string, never>;
@@ -222,7 +223,12 @@ export type Database = {
       request_materials_release: { Args: { p_job_id: string }; Returns: undefined };
       request_completion_review: { Args: { p_job_id: string }; Returns: undefined };
       review_and_release: {
-        Args: { p_job_id: string; p_rating: number; p_comment: string | null };
+        Args: {
+          p_job_id: string;
+          p_rating: number;
+          p_comment: string | null;
+          p_pin: string;
+        };
         Returns: undefined;
       };
       push_diagnostics: {

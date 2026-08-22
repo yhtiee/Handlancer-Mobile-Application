@@ -10,7 +10,6 @@ import {
   initTopUp,
   listTransactions,
   releaseMaterials,
-  releaseWorkmanship,
   requestCompletionReview,
   requestMaterialsRelease,
   requestWithdrawal,
@@ -91,12 +90,10 @@ export function useFundEscrow(jobId: string) {
 
 export function useReleaseMaterials(jobId: string) {
   const invalidate = useWalletInvalidation(jobId);
-  return useMutation({ mutationFn: () => releaseMaterials(jobId), onSuccess: invalidate });
-}
-
-export function useReleaseWorkmanship(jobId: string) {
-  const invalidate = useWalletInvalidation(jobId);
-  return useMutation({ mutationFn: () => releaseWorkmanship(jobId), onSuccess: invalidate });
+  return useMutation({
+    mutationFn: (pin: string) => releaseMaterials(jobId, pin),
+    onSuccess: invalidate,
+  });
 }
 
 /** Provider-side: ask the owner to release the materials portion. */
@@ -122,8 +119,15 @@ export function useReviewAndRelease(jobId: string) {
   const qc = useQueryClient();
   const invalidate = useWalletInvalidation(jobId);
   return useMutation({
-    mutationFn: ({ rating, comment }: { rating: number; comment: string | null }) =>
-      reviewAndRelease(jobId, rating, comment),
+    mutationFn: ({
+      rating,
+      comment,
+      pin,
+    }: {
+      rating: number;
+      comment: string | null;
+      pin: string;
+    }) => reviewAndRelease(jobId, rating, comment, pin),
     onSuccess: () => {
       invalidate();
       // Prefix match: the review lands under the provider's key, which this

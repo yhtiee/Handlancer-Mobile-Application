@@ -86,14 +86,28 @@ export async function fundEscrow(jobId: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function releaseMaterials(jobId: string): Promise<void> {
-  const { error } = await supabase.rpc('release_materials', { p_job_id: jobId });
-  if (error) throw error;
+/**
+ * Turn an RPC failure into something the user can act on.
+ *
+ * Postgres puts the actionable half in `hint` ("Wallet > Settings > Transfer
+ * PIN"), which supabase-js leaves off `message`. Same reasoning as security.ts.
+ */
+function rpcError(error: { message?: string; hint?: string }, fallback: string): Error {
+  console.log('[rpc error]', JSON.stringify(error));
+  const parts = [error?.message, error?.hint].filter(
+    (p): p is string => typeof p === 'string' && p.trim().length > 0,
+  );
+  return new Error(parts.join(' — ') || fallback);
 }
 
-export async function releaseWorkmanship(jobId: string): Promise<void> {
-  const { error } = await supabase.rpc('release_workmanship', { p_job_id: jobId });
-  if (error) throw error;
+/**
+ * Release the materials portion. The PIN is verified inside the same function
+ * that moves the money (migration 0018) — there is no client-side check to skip,
+ * and the ungated single-argument version no longer exists.
+ */
+export async function releaseMaterials(jobId: string, pin: string): Promise<void> {
+  const { error } = await supabase.rpc('release_materials', { p_job_id: jobId, p_pin: pin });
+  if (error) throw rpcError(error, 'Could not release the materials funds.');
 }
 
 /** Provider asks the owner to release the materials portion. Moves no money. */
@@ -116,13 +130,15 @@ export async function reviewAndRelease(
   jobId: string,
   rating: number,
   comment: string | null,
+  pin: string,
 ): Promise<void> {
   const { error } = await supabase.rpc('review_and_release', {
     p_job_id: jobId,
     p_rating: rating,
     p_comment: comment,
+    p_pin: pin,
   });
-  if (error) throw error;
+  if (error) throw rpcError(error, 'Could not release the payment.');
 }
 
 /**
@@ -132,12 +148,7 @@ export async function reviewAndRelease(
  */
 export async function requestWithdrawal(amount: number, pin: string): Promise<void> {
   const { error } = await supabase.rpc('request_withdrawal', { p_amount: amount, p_pin: pin });
-  if (error) {
-    // Same reasoning as security.ts: keep Postgres' `hint`, which is usually
-    // where the actionable part of a failure lives.
-    console.log('[rpc error] request_withdrawal', JSON.stringify(error));
-    throw new Error([error.message, error.hint].filter(Boolean).join(' — ') || 'Withdrawal failed.');
-  }
+  if (error) throw rpcError(error, 'Withdrawal failed.');
 }
 
 /**

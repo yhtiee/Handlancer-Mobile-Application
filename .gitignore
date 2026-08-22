@@ -18,6 +18,13 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Firebase / FCM
+# The service account key lets its holder send push as this project — never
+# commit it. `google-services.json` is deliberately NOT ignored: it is not a
+# secret (it ships inside the APK) and the build fails without it.
+*firebase-adminsdk*.json
+*service-account*.json
+
 # Metro
 .metro-health-check*
 

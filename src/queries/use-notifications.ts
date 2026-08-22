@@ -47,9 +47,12 @@ export function useNotificationsRealtime(onArrive?: (n: Notification) => void) {
   const qc = useQueryClient();
 
   // Kept in a ref so a caller passing an inline closure cannot tear the channel
-  // down and rebuild it on every render.
+  // down and rebuild it on every render. `useRef` seeds it with the value from
+  // the first render, so the subscribe effect below always sees a current one.
   const arriveRef = useRef(onArrive);
-  arriveRef.current = onArrive;
+  useEffect(() => {
+    arriveRef.current = onArrive;
+  }, [onArrive]);
 
   useEffect(() => {
     if (!userId) return;

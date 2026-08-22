@@ -12,40 +12,72 @@ export type ConversationDetail = Conversation & {
   jobTitle: string | null;
 };
 
-/** Open an existing conversation between two users if one exists, otherwise create a new one. */
-export async function getOrCreateConversation(
+/** Postgres unique-violation. Raised by `conversations_pair_uniq` (migration 0019). */
+const UNIQUE_VIOLATION = '23505';
+
+/** Existing thread between two people, whichever column each of them sits in. */
+async function findConversation(
   userId: string,
   otherUserId: string,
-  jobId: string | null,
-): Promise<Conversation> {
-  // Query any existing conversations between these two users (either direction)
-  const { data: existingList, error: listError } = await supabase
+): Promise<Conversation | null> {
+  const { data, error } = await supabase
     .from('conversations')
     .select('*')
     .or(
       `and(user_id.eq.${userId},provider_id.eq.${otherUserId}),and(user_id.eq.${otherUserId},provider_id.eq.${userId})`,
     )
-    .order('created_at', { ascending: false });
+    // Oldest first: that row carries the history. 0019 leaves only one per pair,
+    // but ordering keeps the choice deterministic on a database not yet migrated.
+    .order('created_at', { ascending: true })
+    .order('id', { ascending: true })
+    .limit(1);
+  if (error) throw error;
+  return data?.[0] ?? null;
+}
 
-  if (listError) throw listError;
-
-  if (existingList && existingList.length > 0) {
-    // If a specific jobId was requested, prioritize an existing thread for that job
-    if (jobId) {
-      const matchWithJob = existingList.find((c) => c.job_id === jobId);
-      if (matchWithJob) return matchWithJob;
-    }
-    // Otherwise return the existing conversation thread between these two users
-    return existingList[0];
+/**
+ * Open the thread with someone, creating it only if there truly is none.
+ *
+ * There is exactly one thread per pair of people — see 0019, which enforces it
+ * with a normalised unique index. `jobId` says what the thread is *about* right
+ * now, not which thread to use: messaging the same provider about a second job
+ * continues the existing conversation rather than starting a parallel one, and
+ * the header follows to the new job.
+ */
+export async function getOrCreateConversation(
+  userId: string,
+  otherUserId: string,
+  jobId: string | null,
+): Promise<Conversation> {
+  const existing = await findConversation(userId, otherUserId);
+  if (existing) {
+    if (!jobId || existing.job_id === jobId) return existing;
+    // Point the thread at the job being discussed now. A failure here is not
+    // worth blocking the chat over — the thread is still the right one.
+    const { data } = await supabase
+      .from('conversations')
+      .update({ job_id: jobId })
+      .eq('id', existing.id)
+      .select('*')
+      .maybeSingle();
+    return data ?? existing;
   }
 
-  // Create a new conversation row only if no existing conversation exists between the two users
   const { data, error } = await supabase
     .from('conversations')
     .insert({ user_id: userId, provider_id: otherUserId, job_id: jobId })
     .select('*')
     .single();
-  if (error) throw error;
+
+  if (error) {
+    // Someone else won the race between the lookup above and this insert; the
+    // row they created is the one to use.
+    if (error.code === UNIQUE_VIOLATION) {
+      const raced = await findConversation(userId, otherUserId);
+      if (raced) return raced;
+    }
+    throw error;
+  }
   return data;
 }
 

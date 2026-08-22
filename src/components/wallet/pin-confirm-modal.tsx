@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
@@ -56,13 +56,15 @@ export function PinConfirmModal({
   const [pin, setPin] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
 
-  // Never leave a PIN sitting in state behind a closed sheet.
-  useEffect(() => {
-    if (!visible) {
-      setPin('');
-      setLocalError(null);
-    }
-  }, [visible]);
+  // Never leave a PIN sitting in state behind a closed sheet. Adjusted during
+  // render rather than in an effect: the sheet stays mounted while hidden, so an
+  // effect would clear it a render late (and cascade).
+  const [wasVisible, setWasVisible] = useState(visible);
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    setPin('');
+    setLocalError(null);
+  }
 
   const hasPin = Boolean(security?.hasPin);
   const locked = Boolean(security?.pinLocked);

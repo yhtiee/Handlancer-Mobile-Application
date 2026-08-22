@@ -1,4 +1,4 @@
-import type { Escrow, Transaction, Wallet } from '@/services/database.types';
+import type { Escrow, Job, Profile, Transaction, Wallet } from '@/services/database.types';
 import { pageRange, toPage, type Page } from '@/services/pagination';
 import { supabase } from '@/services/supabase';
 
@@ -27,6 +27,48 @@ export async function listTransactions(ownerId: string, page: number): Promise<P
     .range(from, to);
   if (error) throw error;
   return toPage(data, page);
+}
+
+export type TransactionDetail = Transaction & {
+  job: Job | null;
+  /** The other party on the job, when there is one. Never set for top-ups/payouts. */
+  counterparty: Profile | null;
+};
+
+/**
+ * One transaction with the context needed to recognise it.
+ *
+ * The list row can only ever say "Job payout · 3d ago"; a receipt has to answer
+ * *which* job and *who*, which is the whole reason this screen exists. RLS keeps
+ * it honest: `txn self` limits the row to the caller's own wallet, and any job
+ * with a transaction is one they own or were hired for.
+ */
+export async function getTransaction(
+  id: string,
+  viewerId: string,
+): Promise<TransactionDetail | null> {
+  const { data: txn, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!txn) return null;
+
+  if (!txn.job_id) return { ...txn, job: null, counterparty: null };
+
+  const { data: job } = await supabase.from('jobs').select('*').eq('id', txn.job_id).maybeSingle();
+  if (!job) return { ...txn, job: null, counterparty: null };
+
+  const otherId = job.owner_id === viewerId ? job.hired_provider_id : job.owner_id;
+  if (!otherId) return { ...txn, job, counterparty: null };
+
+  const { data: other } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', otherId)
+    .maybeSingle();
+  return { ...txn, job, counterparty: other ?? null };
 }
 
 export async function getEscrow(jobId: string): Promise<Escrow | null> {

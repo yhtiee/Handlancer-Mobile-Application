@@ -46,6 +46,8 @@ export const routes = {
   walletWithdraw: (shell: 'user' | 'provider'): Href => `/(${shell})/wallet/withdraw` as Href,
   walletBank: (shell: 'user' | 'provider'): Href => `/(${shell})/wallet/bank` as Href,
   walletPin: (shell: 'user' | 'provider'): Href => `/(${shell})/wallet/pin` as Href,
+  walletTransaction: (shell: 'user' | 'provider', id: string): Href =>
+    `/(${shell})/wallet/transaction/${id}` as Href,
 
   // Chat (both shells)
   chatThread: (shell: 'user' | 'provider', id: string): Href => `/(${shell})/chat/${id}` as Href,

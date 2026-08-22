@@ -5,6 +5,7 @@ import { queryKeys } from '@/queries/keys';
 import {
   fundEscrow,
   getEscrow,
+  getTransaction,
   getWallet,
   initTopUp,
   listTransactions,
@@ -36,6 +37,17 @@ export function useTransactions() {
     initialPageParam: 0,
     getNextPageParam: (lastPage) => lastPage.nextPage,
     enabled: !!ownerId,
+  });
+}
+
+/** One transaction, enriched with its job and counterparty. */
+export function useTransaction(id: string) {
+  const { session } = useAuth();
+  const viewerId = session?.user.id;
+  return useQuery({
+    queryKey: ['transaction', id] as const,
+    queryFn: () => getTransaction(id, viewerId!),
+    enabled: !!id && !!viewerId,
   });
 }
 

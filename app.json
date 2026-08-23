@@ -23,7 +23,6 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.yhutiee.handlancer",
-      "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ]

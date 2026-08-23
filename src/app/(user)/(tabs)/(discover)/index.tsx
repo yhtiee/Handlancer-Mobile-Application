@@ -11,6 +11,7 @@ import { EmptyState, ListSkeleton, ScreenView, SearchField } from '@/components/
 import { Layout } from '@/constants/theme';
 import { routes } from '@/lib/routes';
 import { useAuth } from '@/providers/auth-provider';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useInfiniteList } from '@/hooks/use-infinite-list';
 import { useProviders } from '@/queries/use-providers';
 import { useTabBarInset } from '@/hooks/use-insets';
@@ -21,7 +22,9 @@ export default function Discover() {
   const { width } = useWindowDimensions();
   const bottomInset = useTabBarInset();
   const [search, setSearch] = useState('');
-  const query = useProviders(search);
+  // The field stays instant; the query only sees what the user settled on.
+  const debouncedSearch = useDebouncedValue(search);
+  const query = useProviders(debouncedSearch);
   const { items: providerList } = useInfiniteList(query);
   const isLoading = query.isLoading;
 
@@ -47,8 +50,6 @@ export default function Discover() {
           paddingBottom: bottomInset,
           gap: Layout.sectionGap,
         }}>
-        <SearchField value={search} onChangeText={setSearch} placeholder="Search a service" />
-
         <QuickActions
           primary={{
             icon: 'add-circle-outline',
@@ -73,10 +74,17 @@ export default function Discover() {
         />
 
         <View style={{ gap: Layout.listGap }}>
+          {/* Sits directly on top of the list it filters: this field searches
+              providers, so it belongs with them rather than above the promos. */}
+          <SearchField
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search a service or provider"
+          />
           <SectionHeader title="Near you" onPress={() => router.push(routes.browseProviders)} />
           {isLoading ? (
             <ListSkeleton />
-          ) : providerList.length === 0 && !search ? (
+          ) : providerList.length === 0 && !debouncedSearch ? (
             <EmptyState
               icon="people-outline"
               title="No providers yet"

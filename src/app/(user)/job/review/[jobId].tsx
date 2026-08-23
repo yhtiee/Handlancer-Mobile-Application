@@ -7,12 +7,12 @@ import { RatingInput } from '@/components/reviews/rating-input';
 import {
   Button,
   Card,
-  ConfirmModal,
   formatMoney,
   MoneyText,
   RatingStars,
   SuccessModal,
 } from '@/components/ui';
+import { PinConfirmModal } from '@/components/wallet/pin-confirm-modal';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useJob } from '@/queries/use-jobs';
 import { useCreateReview } from '@/queries/use-reviews';
@@ -65,10 +65,11 @@ export default function ReviewJob() {
     }
   }
 
-  async function confirmRelease() {
+  /** The transfer PIN comes from the modal; it is only ever forwarded to the RPC. */
+  async function confirmRelease(pin: string) {
     setError(null);
     try {
-      await reviewAndRelease.mutateAsync({ rating, comment: comment.trim() || null });
+      await reviewAndRelease.mutateAsync({ rating, comment: comment.trim() || null, pin });
       setConfirming(false);
       setReleased(true);
     } catch (e) {
@@ -131,7 +132,7 @@ export default function ReviewJob() {
         />
       </ScrollView>
 
-      <ConfirmModal
+      <PinConfirmModal
         visible={confirming}
         onCancel={() => setConfirming(false)}
         onConfirm={confirmRelease}

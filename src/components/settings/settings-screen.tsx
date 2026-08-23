@@ -8,21 +8,58 @@ import { Radius, Spacing } from '@/constants/theme';
 import { routes } from '@/lib/routes';
 import { useAuth } from '@/providers/auth-provider';
 import { useWalletSecurity } from '@/queries/use-wallet-security';
-import { registerForPushNotifications } from '@/services/push';
+import { getPushDiagnostics, savePushToken } from '@/services/notifications';
+import { PUSH_REASON_TEXT, registerForPushNotifications } from '@/services/push';
 import { useTheme } from '@/hooks/use-theme';
 
 export function SettingsScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { profile } = useAuth();
+  const { session, profile } = useAuth();
   const shell = profile?.role === 'provider' ? 'provider' : 'user';
   const { data: security } = useWalletSecurity();
 
   const [pushStatus, setPushStatus] = useState<string | null>(null);
+  const [pushOk, setPushOk] = useState(false);
+  const [checking, setChecking] = useState(false);
 
+  /**
+   * Registers, then reports what actually happened.
+   *
+   * This used to collapse six distinct failures into "Not available on this
+   * device", which is how a phone that never receives push became impossible to
+   * diagnose. Both halves are checked: the device token, and the server-side
+   * delivery hook — a healthy token still sends nothing if the hook is unset.
+   */
   async function enablePush() {
-    const token = await registerForPushNotifications();
-    setPushStatus(token ? 'Notifications enabled on this device.' : 'Not available on this device.');
+    setChecking(true);
+    setPushStatus(null);
+    try {
+      const { token, reason } = await registerForPushNotifications();
+      if (token && session?.user.id) {
+        await savePushToken(session.user.id, token).catch(() => {});
+      }
+      if (reason) {
+        setPushOk(false);
+        setPushStatus(PUSH_REASON_TEXT[reason]);
+        return;
+      }
+
+      const server = await getPushDiagnostics().catch(() => null);
+      const serverReady =
+        !server || (server.triggerInstalled && server.hookUrlSet && server.hookSecretSet);
+      setPushOk(serverReady);
+      setPushStatus(
+        serverReady
+          ? 'Notifications are enabled on this device.'
+          : 'This device is registered, but the server is not set up to deliver push yet — the push_hook_url / push_hook_secret Vault entries are missing.',
+      );
+    } catch (e) {
+      setPushOk(false);
+      setPushStatus(e instanceof Error ? e.message : 'Could not check notifications.');
+    } finally {
+      setChecking(false);
+    }
   }
 
   return (
@@ -76,11 +113,17 @@ export function SettingsScreen() {
             title="Enable on this device"
             variant="secondary"
             icon="notifications"
+            loading={checking}
             onPress={enablePush}
             style={{ marginTop: Spacing.three }}
           />
           {pushStatus ? (
-            <Text style={[styles.rowSub, { color: theme.textSecondary, marginTop: Spacing.two }]}>
+            <Text
+              selectable
+              style={[
+                styles.rowSub,
+                { color: pushOk ? theme.success : theme.warning, marginTop: Spacing.two },
+              ]}>
               {pushStatus}
             </Text>
           ) : null}

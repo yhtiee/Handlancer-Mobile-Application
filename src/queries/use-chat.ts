@@ -80,6 +80,11 @@ export function useStartConversation() {
   return useMutation({
     mutationFn: ({ providerId, jobId }: { providerId: string; jobId: string | null }) =>
       getOrCreateConversation(session!.user.id, providerId, jobId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.conversations() }),
+    onSuccess: (conversation) => {
+      qc.invalidateQueries({ queryKey: queryKeys.conversations() });
+      // Reusing a thread can repoint it at the job now being discussed, so the
+      // cached header for that thread is stale.
+      qc.invalidateQueries({ queryKey: ['conversation', conversation.id] });
+    },
   });
 }

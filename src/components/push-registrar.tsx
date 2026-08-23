@@ -1,15 +1,18 @@
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
+import { describeNotification } from '@/lib/notification-copy';
 import { routes } from '@/lib/routes';
 import { useAuth } from '@/providers/auth-provider';
 import { useNotificationsRealtime } from '@/queries/use-notifications';
 import { useRealtimeSync } from '@/queries/use-realtime-sync';
 import { savePushToken } from '@/services/notifications';
+import type { Notification } from '@/services/database.types';
 import {
   addPushResponseListener,
   configurePushHandler,
   getInitialPushData,
+  presentLocalNotification,
   registerForPushNotifications,
 } from '@/services/push';
 
@@ -20,8 +23,34 @@ export function PushRegistrar() {
   const userId = session?.user.id;
   const shell = profile?.role === 'provider' ? 'provider' : 'user';
 
+  /**
+   * Whether Expo will deliver this notification to the tray on its own. Until
+   * registration resolves we assume it will not, so the very first arrival on an
+   * Expo Go build is not silently dropped.
+   */
+  const remotePush = useRef(false);
+
+  /**
+   * Raise the tray entry ourselves when Expo cannot.
+   *
+   * Without this, an Expo Go build writes the `notifications` row, updates the
+   * in-app list, and shows nothing on the phone — the exact "notifications are
+   * saved but never arrive" symptom. Skipped when remote push is live, or the
+   * user would get every notification twice.
+   */
+  const announce = useCallback((n: Notification) => {
+    if (remotePush.current) return;
+    const payload = (n.payload ?? {}) as Record<string, unknown>;
+    const { title, body } = describeNotification(n.type, payload);
+    presentLocalNotification(title, body, {
+      type: n.type,
+      ...payload,
+      notificationId: n.id,
+    }).catch(() => {});
+  }, []);
+
   // Single app-wide realtime subscription that feeds the notifications cache.
-  useNotificationsRealtime();
+  useNotificationsRealtime(announce);
   // Keeps jobs, quotes, escrow and chat fresh without a manual reload.
   useRealtimeSync();
 
@@ -31,10 +60,13 @@ export function PushRegistrar() {
 
     configurePushHandler();
     registerForPushNotifications()
-      .then((token) => {
-        if (active && token && token !== profile?.push_token) {
+      .then(({ token, reason }) => {
+        if (!active) return;
+        remotePush.current = Boolean(token);
+        if (token && token !== profile?.push_token) {
           savePushToken(userId, token).catch(() => {});
         }
+        if (reason) console.log(`[push] no token on this device: ${reason}`);
       })
       .catch(() => {});
 

@@ -5,7 +5,7 @@ import {
   useQueryClient,
   type InfiniteData,
 } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { useAuth } from '@/providers/auth-provider';
 import { queryKeys } from '@/queries/keys';
@@ -37,15 +37,27 @@ export function useNotifications() {
  * Opens the single realtime subscription that keeps the notifications cache
  * fresh. Mount this exactly once (in PushRegistrar) — multiple subscribers to
  * the same Supabase channel throw "cannot add postgres_changes after subscribe".
+ *
+ * `onArrive` runs for each new row. PushRegistrar uses it to raise a local
+ * notification on runtimes with no remote push, so the phone still buzzes.
  */
-export function useNotificationsRealtime() {
+export function useNotificationsRealtime(onArrive?: (n: Notification) => void) {
   const { session } = useAuth();
   const userId = session?.user.id;
   const qc = useQueryClient();
 
+  // Kept in a ref so a caller passing an inline closure cannot tear the channel
+  // down and rebuild it on every render. `useRef` seeds it with the value from
+  // the first render, so the subscribe effect below always sees a current one.
+  const arriveRef = useRef(onArrive);
+  useEffect(() => {
+    arriveRef.current = onArrive;
+  }, [onArrive]);
+
   useEffect(() => {
     if (!userId) return;
     const unsubscribe = subscribeToNotifications(userId, (n) => {
+      arriveRef.current?.(n);
       // Newest first, so an arrival belongs at the head of the first page.
       qc.setQueryData<InfiniteData<Page<Notification>>>(queryKeys.notifications(), (prev) => {
         if (!prev?.pages.length) return prev;

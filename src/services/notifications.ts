@@ -52,6 +52,26 @@ export async function savePushToken(userId: string, token: string): Promise<void
   if (error) throw error;
 }
 
+/** Server half of the push pipeline. See migration 0017 for why each flag exists. */
+export type PushDiagnostics = {
+  hasToken: boolean;
+  triggerInstalled: boolean;
+  hookUrlSet: boolean;
+  hookSecretSet: boolean;
+};
+
+export async function getPushDiagnostics(): Promise<PushDiagnostics> {
+  const { data, error } = await supabase.rpc('push_diagnostics');
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    hasToken: Boolean(row?.has_token),
+    triggerInstalled: Boolean(row?.trigger_installed),
+    hookUrlSet: Boolean(row?.hook_url_set),
+    hookSecretSet: Boolean(row?.hook_secret_set),
+  };
+}
+
 /** Subscribe to new notifications for a user. Returns an unsubscribe fn. */
 export function subscribeToNotifications(
   userId: string,

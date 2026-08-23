@@ -1,7 +1,7 @@
 import { Link, Stack, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Button, Card, GlobalLoader, Icon, JobStatusPill, MoneyText, QuoteStatusPill, Screen } from '@/components/ui';
+import { Avatar, Button, Card, GlobalLoader, Icon, JobStatusPill, MoneyText, QuoteStatusPill, Screen } from '@/components/ui';
 import { categoryIcon, categoryLabel } from '@/constants/categories';
 import { Radius, Spacing } from '@/constants/theme';
 import { formatDate, timeAgo } from '@/lib/date';
@@ -52,6 +52,27 @@ export default function FindWorkJob() {
             </Text>
           </View>
         </View>
+
+        {/* Who posted this. A provider deciding whether to bid was previously
+            shown everything about the job except the person behind it. */}
+        <Card>
+          <View style={styles.customerRow}>
+            <Avatar uri={job.owner?.avatar_url} name={job.owner?.name} size={44} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.customerLabel, { color: theme.textSecondary }]}>
+                POSTED BY
+              </Text>
+              <Text numberOfLines={1} style={[styles.customerName, { color: theme.text }]}>
+                {job.owner?.name ?? 'HandLancer customer'}
+              </Text>
+              {job.owner?.location ? (
+                <Text numberOfLines={1} style={[styles.meta, { color: theme.textSecondary }]}>
+                  {job.owner.location}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        </Card>
 
         <Card>
           <Row label="Budget">
@@ -180,6 +201,9 @@ const styles = StyleSheet.create({
   section: { gap: Spacing.two },
   sectionTitle: { fontSize: 18, fontWeight: '600' },
   body: { fontSize: 16, lineHeight: 24 },
+  customerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  customerLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.4 },
+  customerName: { fontSize: 17, fontWeight: '600', marginTop: 1 },
   quoteHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   quoteTotalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: Spacing.two },
   closed: { fontSize: 15, textAlign: 'center' },

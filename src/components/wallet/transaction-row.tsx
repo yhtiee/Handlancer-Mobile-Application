@@ -1,8 +1,10 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatMoney, Icon, type IconName } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { timeAgo } from '@/lib/date';
+import { routes } from '@/lib/routes';
 import type { Transaction, TxnType } from '@/services/database.types';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -14,8 +16,15 @@ const META: Record<TxnType, { label: string; icon: IconName; credit: boolean }> 
   payout: { label: 'Job payout', icon: 'checkmark-circle', credit: true },
 };
 
-export function TransactionRow({ txn }: { txn: Transaction }) {
+export function TransactionRow({
+  txn,
+  shell,
+}: {
+  txn: Transaction;
+  shell: 'user' | 'provider';
+}) {
   const theme = useTheme();
+  const router = useRouter();
   const m = META[txn.type];
   const credit = m.credit;
   const color = credit ? theme.success : theme.text;
@@ -23,7 +32,12 @@ export function TransactionRow({ txn }: { txn: Transaction }) {
     txn.status === 'pending' ? theme.warning : credit ? theme.success : theme.textSecondary;
 
   return (
-    <View style={styles.row}>
+    <Pressable
+      onPress={() => router.push(routes.walletTransaction(shell, txn.id))}
+      style={({ pressed }) => [
+        styles.row,
+        { backgroundColor: pressed ? theme.backgroundSelected : 'transparent' },
+      ]}>
       <View style={[styles.iconWrap, { backgroundColor: tint + '22' }]}>
         <Icon name={m.icon} size={20} color={tint} />
       </View>
@@ -34,16 +48,27 @@ export function TransactionRow({ txn }: { txn: Transaction }) {
           {timeAgo(txn.created_at)}
         </Text>
       </View>
-      <Text selectable style={[styles.amount, { color }]}>
+      {/* Amount and affordance share the trailing edge: the chevron is what
+          tells the user the receipt behind this row exists at all. */}
+      <Text selectable={false} style={[styles.amount, { color }]}>
         {credit ? '+' : '−'}
         {formatMoney(txn.amount)}
       </Text>
-    </View>
+      <Icon name="chevron-forward" size={15} color={theme.textSecondary} />
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.two },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.twoHalf,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.one,
+    borderRadius: Radius.md,
+    borderCurve: 'continuous',
+  },
   iconWrap: {
     width: 40,
     height: 40,

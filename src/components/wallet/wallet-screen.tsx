@@ -59,7 +59,7 @@ export function WalletScreen({ shell }: { shell: 'user' | 'provider' }) {
         ListFooterComponent={<ListFooter loading={loadingMore} />}
         ListHeaderComponent={header}
         contentContainerStyle={{ paddingHorizontal: Layout.gutter, paddingBottom: bottomInset }}
-        renderItem={({ item }) => <TransactionRow txn={item} />}
+        renderItem={({ item }) => <TransactionRow txn={item} shell={shell} />}
         ListEmptyComponent={
           <EmptyState
             icon="card-outline"

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button, ConfirmModal, MoneyText, SuccessModal } from '@/components/ui';
+import { PinConfirmModal } from '@/components/wallet/pin-confirm-modal';
 import { Spacing, Type } from '@/constants/theme';
 import { routes } from '@/lib/routes';
 import { useJobQuotes } from '@/queries/use-quotes';
@@ -40,32 +41,38 @@ export function EscrowSection({ job }: { job: Job }) {
     !!escrow && escrow.materials_amount > 0 && !escrow.materials_released && funded;
   const finalDue = !!escrow && funded && !escrow.workmanship_released;
 
-  async function confirm() {
+  async function confirmFund() {
     setError(null);
     try {
-      if (confirming === 'fund') {
-        await fund.mutateAsync();
-        setConfirming(null);
-        setSuccess({
-          title: 'Provider hired',
-          message: 'Your payment is now held in escrow and work can begin.',
-          amount: approved?.total,
-        });
-      } else if (confirming === 'materials') {
-        await releaseMaterials.mutateAsync();
-        setConfirming(null);
-        setSuccess({
-          title: 'Materials released',
-          message: 'The funds are on their way to the provider’s wallet.',
-          amount: escrow?.materials_amount,
-        });
-      }
+      await fund.mutateAsync();
+      setConfirming(null);
+      setSuccess({
+        title: 'Provider hired',
+        message: 'Your payment is now held in escrow and work can begin.',
+        amount: approved?.total,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong');
     }
   }
 
-  const busy = fund.isPending || releaseMaterials.isPending;
+  /** Releasing needs the transfer PIN; the modal collects it and hands it here. */
+  async function confirmMaterials(pin: string) {
+    setError(null);
+    try {
+      await releaseMaterials.mutateAsync(pin);
+      setConfirming(null);
+      setSuccess({
+        title: 'Materials released',
+        message: 'The funds are on their way to the provider’s wallet.',
+        amount: escrow?.materials_amount,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong');
+    }
+  }
+
+  const busy = fund.isPending;
 
   return (
     <View style={styles.wrap}>
@@ -124,7 +131,7 @@ export function EscrowSection({ job }: { job: Job }) {
       <ConfirmModal
         visible={confirming === 'fund'}
         onCancel={() => setConfirming(null)}
-        onConfirm={confirm}
+        onConfirm={confirmFund}
         icon="lock-closed"
         title="Fund escrow & hire"
         message="This moves money from your wallet into escrow. It is held safely and only released when you approve the work."
@@ -139,15 +146,15 @@ export function EscrowSection({ job }: { job: Job }) {
         ]}
       />
 
-      <ConfirmModal
+      <PinConfirmModal
         visible={confirming === 'materials'}
         onCancel={() => setConfirming(null)}
-        onConfirm={confirm}
+        onConfirm={confirmMaterials}
         icon="cube"
         title="Release materials funds?"
         message="This pays the materials portion to the provider now. It cannot be reversed from the app."
         confirmLabel="Release funds"
-        loading={busy}
+        loading={releaseMaterials.isPending}
         error={error}
         details={[
           {

@@ -53,6 +53,14 @@ function describe(type: string, p: Payload): { title: string; body: string } {
       return { title: 'Materials released', body: `${money(p.amount)} is on its way` };
     case 'payout':
       return { title: 'Payment received', body: `${money(p.amount)} paid into your wallet` };
+    // No allegation on the lock screen — see notify copy in 0020.
+    case 'dispute_opened':
+      return {
+        title: 'A job was disputed',
+        body: p.reference
+          ? `“${title}” — ref ${p.reference}. Payment is on hold while support reviews it.`
+          : `“${title}” — payment is on hold while support reviews it.`,
+      };
     case 'dispute_resolved':
       return {
         title: 'Dispute resolved',

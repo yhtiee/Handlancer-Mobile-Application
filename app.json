@@ -65,7 +65,10 @@
           "color": "#0FB5A4",
           "defaultChannel": "default"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true,

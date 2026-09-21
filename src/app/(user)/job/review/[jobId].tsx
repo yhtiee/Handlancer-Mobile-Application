@@ -48,6 +48,14 @@ export default function ReviewJob() {
     setError(null);
     if (rating < 1) return setError('Tap a star to rate the work');
     if (!job?.hired_provider_id) return setError('No provider to review on this job');
+    // Disputed money is support's to settle. `review_and_release` refuses this
+    // too (0020) — this is only so the user finds out before typing a review,
+    // rather than from a Postgres error after.
+    if (job.status === 'disputed') {
+      return setError(
+        'This job is under dispute. Support settles the escrow — it cannot be released here.',
+      );
+    }
 
     // Money is about to move — confirm the amount before it goes.
     if (releasing) return setConfirming(true);

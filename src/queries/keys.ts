@@ -42,6 +42,8 @@ export const queryKeys = {
 
   reviews: (providerId: string) => ['reviews', providerId] as const,
   jobMedia: (jobId: string) => ['job-media', jobId] as const,
+  /** The live dispute on a job, readable by both parties. */
+  dispute: (jobId: string) => ['dispute', jobId] as const,
   notifications: () => ['notifications', 'list'] as const,
   /** Counted in Postgres — the list is paginated, so it can't be counted here. */
   unreadCount: () => ['notifications', 'unread-count'] as const,

@@ -51,6 +51,16 @@ export function useRealtimeSync() {
           qc.invalidateQueries({ queryKey: queryKeys.jobs.detail(row.job_id) });
         }
       })
+      // Disputes drive both sides of the sad path: the client's "Report a
+      // problem" becomes the open ticket, and the provider's job screen grows
+      // the disputed banner. Resolution flips the same row, so watch updates too.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'disputes' }, (payload) => {
+        const row = (payload.new ?? payload.old) as { job_id?: string } | null;
+        if (row?.job_id) {
+          qc.invalidateQueries({ queryKey: queryKeys.dispute(row.job_id) });
+          qc.invalidateQueries({ queryKey: queryKeys.jobs.detail(row.job_id) });
+        }
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
         const row = (payload.new ?? payload.old) as { conversation_id?: string } | null;
         if (row?.conversation_id) {

@@ -53,6 +53,17 @@ export function describeNotification(
         title: 'Work marked complete',
         body: `Review “${title}” to release the final payment`,
       };
+    // The provider's side of the sad path. Names the job and the reference they
+    // will need to quote, and nothing about what was actually alleged — support
+    // relays that once they have heard both sides.
+    case 'dispute_opened':
+      return {
+        icon: 'warning',
+        title: 'A job was disputed',
+        body: p.reference
+          ? `“${title}” — ref ${String(p.reference)}. Payment is on hold.`
+          : `“${title}” — payment is on hold while support reviews it`,
+      };
     case 'dispute_resolved':
       return {
         icon: 'shield-checkmark',

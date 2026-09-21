@@ -170,7 +170,17 @@ export type Dispute = {
   job_id: string;
   opened_by: string;
   reason: string | null;
+  /** One of the DisputeCategory values in lib/dispute-report.ts. */
+  category: string | null;
+  desired_outcome: string | null;
+  /** Short human-quotable ticket code, e.g. "HL-1A2B3C4D". Set by open_dispute. */
+  reference: string | null;
   status: DisputeStatus;
+  /** Set by admin_resolve_dispute (0009); null while the ticket is live. */
+  resolution?: string | null;
+  resolved_at?: string | null;
+  refunded_amount?: number | null;
+  released_amount?: number | null;
   created_at: string;
 };
 
@@ -230,6 +240,19 @@ export type Database = {
           p_pin: string;
         };
         Returns: undefined;
+      };
+      /**
+       * Files the ticket, freezes the job and notifies the provider in one
+       * transaction — see 0020. Returns the dispute row, existing or new.
+       */
+      open_dispute: {
+        Args: {
+          p_job_id: string;
+          p_reason: string;
+          p_category: string | null;
+          p_desired_outcome: string | null;
+        };
+        Returns: Dispute;
       };
       push_diagnostics: {
         Args: Record<string, never>;

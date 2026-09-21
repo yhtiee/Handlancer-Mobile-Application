@@ -2,6 +2,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
+import { ProviderDisputeBanner } from '@/components/disputes/provider-dispute-banner';
 import { EscrowTimeline } from '@/components/escrow/escrow-timeline';
 import { ProviderMilestones } from '@/components/escrow/provider-milestones';
 import { ProofUploader } from '@/components/media/proof-uploader';
@@ -73,6 +74,11 @@ export default function ProviderJobDetail() {
           </View>
         </Animated.View>
 
+        {/* ── Ahead of the vault, because it changes what the vault means:
+              that money is still there, but it is no longer simply waiting
+              for the client to approve. ──────────────────────────── */}
+        {job.status === 'disputed' ? <ProviderDisputeBanner job={job} /> : null}
+
         {/* ── The provider's version of the vault: what is secured for
               them, which is the reassurance that matters before they
               spend their own money on materials. ─────────────────── */}
@@ -83,15 +89,23 @@ export default function ProviderJobDetail() {
               { backgroundColor: theme.tint + '12', borderColor: theme.tint + '2E' },
             ]}>
             <View style={styles.vaultTop}>
-              <Icon name="shield-checkmark" size={14} color={theme.tint} />
-              <Text style={[Type.micro, { color: theme.tint }]}>SECURED FOR YOU</Text>
+              <Icon
+                name={job.status === 'disputed' ? 'lock-closed' : 'shield-checkmark'}
+                size={14}
+                color={theme.tint}
+              />
+              <Text style={[Type.micro, { color: theme.tint }]}>
+                {job.status === 'disputed' ? 'FROZEN PENDING DISPUTE' : 'SECURED FOR YOU'}
+              </Text>
             </View>
             <MoneyText
               amount={outstanding}
               style={[Type.display, { color: theme.text }]}
             />
             <Text style={[Type.caption, { color: theme.textSecondary }]}>
-              {earned > 0 ? (
+              {job.status === 'disputed' ? (
+                'Held until support settles the dispute — neither side can move it'
+              ) : earned > 0 ? (
                 <>
                   <MoneyText
                     amount={earned}

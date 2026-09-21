@@ -20,6 +20,7 @@ import { categoryIcon, categoryLabel } from '@/constants/categories';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { formatDate, timeAgo } from '@/lib/date';
 import { routes } from '@/lib/routes';
+import { useJobDispute } from '@/queries/use-disputes';
 import { useJob, useUpdateJobStatus } from '@/queries/use-jobs';
 import { useJobMedia } from '@/queries/use-media';
 import { useStartConversation } from '@/queries/use-chat';
@@ -37,6 +38,7 @@ export default function JobDetail() {
   const { data: media } = useJobMedia(id);
   const { data: myReview } = useMyReviewForJob(id);
   const { data: escrow } = useEscrow(id);
+  const { data: dispute } = useJobDispute(id);
   const updateStatus = useUpdateJobStatus(id);
 
   if (isLoading || !job) {
@@ -238,10 +240,35 @@ export default function JobDetail() {
           </View>
         ) : null}
 
-        {/* ── Escape hatch. Deliberately last and quiet: it should be
-              findable when something is wrong, not competing with the
-              actions above. ──────────────────────────────────────── */}
-        {(job.status === 'in_progress' || job.status === 'completed') && job.hired_provider_id ? (
+        {/* ── The sad path. While the job is running this is deliberately last
+              and quiet — findable when something is wrong, not competing with
+              the actions above. Once a dispute is open it is the only thing
+              that can happen to this job, so it stops being quiet. ──────── */}
+        {job.status === 'disputed' ? (
+          <View
+            style={[
+              styles.disputed,
+              { backgroundColor: theme.danger + '12', borderColor: theme.danger + '33' },
+            ]}>
+            <View style={styles.disputedHead}>
+              <Icon name="shield-half" size={18} color={theme.danger} />
+              <Text style={[Type.title, { color: theme.text, flex: 1 }]}>Dispute open</Text>
+              {dispute?.reference ? (
+                <Text selectable style={[Type.caption, { color: theme.danger }]}>
+                  {dispute.reference}
+                </Text>
+              ) : null}
+            </View>
+            <Text style={[Type.callout, { color: theme.textSecondary }]}>
+              Everything still in escrow is frozen and the provider has been notified. Support
+              settles it from here — approving and paying is no longer possible on this job.
+            </Text>
+            <Link href={routes.disputeJob(job.id)} asChild>
+              <Button title="Contact support" variant="secondary" icon="chatbox-ellipses" />
+            </Link>
+          </View>
+        ) : (job.status === 'in_progress' || job.status === 'completed') &&
+          job.hired_provider_id ? (
           <Link href={routes.disputeJob(job.id)} asChild>
             <Button title="Report a problem" variant="ghost" icon="warning-outline" />
           </Link>
@@ -288,6 +315,14 @@ const styles = StyleSheet.create({
   },
   vaultTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   section: { gap: Spacing.twoHalf },
+  disputed: {
+    borderRadius: Radius.lg,
+    borderCurve: 'continuous',
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: Spacing.three,
+    gap: Spacing.twoHalf,
+  },
+  disputedHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',

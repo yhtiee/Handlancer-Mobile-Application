@@ -55,6 +55,8 @@ export type Profile = {
   hourly_rate: number | null;
   years_experience: number | null;
   push_token: string | null;
+  /** Set when the person deleted their account; the row stays as "Deleted user". */
+  deleted_at?: string | null;
   created_at: string;
 };
 
@@ -209,6 +211,8 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      /** 0022: refuses while money or work is in flight; scrubs and deletes the caller. */
+      delete_my_account: { Args: Record<string, never>; Returns: undefined };
       fund_escrow: { Args: { p_job_id: string }; Returns: undefined };
       // Escrow releases take the transfer PIN since 0018; the ungated overloads
       // were dropped, and release_workmanship is no longer callable by clients.

@@ -12,7 +12,7 @@ export async function listProviders(
 ): Promise<Page<Profile>> {
   const { from, to } = pageRange(page);
   let query = applyProviderFilters(
-    supabase.from('profiles').select('*').eq('role', 'provider'),
+    supabase.from('profiles').select('*').eq('role', 'provider').is('deleted_at', null),
     search,
     filters,
   );
@@ -43,7 +43,11 @@ export async function countProviders(
   filters: ProviderFilters,
 ): Promise<number> {
   const query = applyProviderFilters(
-    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'provider'),
+    supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('role', 'provider')
+      .is('deleted_at', null),
     search,
     filters,
   );

@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from '@/components/ui/text';
 
 import { Button, Card, Icon, type IconName, Screen, SegmentedControl } from '@/components/ui';
+import { DeleteAccountSheet } from '@/components/settings/delete-account-sheet';
 import { useAppearance } from '@/lib/appearance';
 import { Radius, Spacing } from '@/constants/theme';
 import { routes } from '@/lib/routes';
@@ -21,6 +22,7 @@ export function SettingsScreen() {
   const shell = profile?.role === 'provider' ? 'provider' : 'user';
   const { data: security } = useWalletSecurity();
   const [appearance, setAppearance] = useAppearance();
+  const [deleting, setDeleting] = useState(false);
 
   const [pushStatus, setPushStatus] = useState<string | null>(null);
   const [pushOk, setPushOk] = useState(false);
@@ -149,6 +151,21 @@ export function SettingsScreen() {
         </Card>
       </View>
 
+      <View style={styles.section}>
+        <Text style={[styles.heading, { color: theme.textSecondary }]}>Account</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setDeleting(true)}
+          style={({ pressed }) => [styles.deleteRow, { backgroundColor: theme.backgroundElement, opacity: pressed ? 0.7 : 1 }]}>
+          <Text style={[styles.rowTitle, { color: theme.danger }]}>Delete account</Text>
+          <Icon name="chevron-forward" size={18} color={theme.textSecondary} />
+        </Pressable>
+        <Text style={[styles.note, { color: theme.textSecondary }]}>
+          Erases your personal details and signs you out for good.
+        </Text>
+      </View>
+      <DeleteAccountSheet visible={deleting} onClose={() => setDeleting(false)} />
+
       <Text style={[styles.version, { color: theme.textSecondary }]}>
         Handlancer v{Constants.expoConfig?.version ?? '1.0.0'}
       </Text>
@@ -205,6 +222,15 @@ function Divider() {
 }
 
 const styles = StyleSheet.create({
+  deleteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 52,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Radius.lg,
+    borderCurve: 'continuous',
+  },
   content: { gap: Spacing.four, paddingTop: Spacing.three },
   section: { gap: Spacing.two },
   heading: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },

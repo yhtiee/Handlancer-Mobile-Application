@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
 import { Radius, Spacing } from '@/constants/theme';
 import type { JobStatus, QuoteStatus } from '@/services/database.types';
@@ -37,7 +38,7 @@ export function Pill({ tone, label }: { tone: Tone; label: string }) {
   const theme = useTheme();
   const map: Record<Tone, string> = {
     neutral: theme.textSecondary,
-    info: theme.tint,
+    info: theme.accent,
     success: theme.success,
     warning: theme.warning,
     danger: theme.danger,
@@ -45,8 +46,9 @@ export function Pill({ tone, label }: { tone: Tone; label: string }) {
   const color = map[tone];
 
   return (
-    <View style={[styles.pill, { backgroundColor: color + '22' }]}>
-      <Text style={[styles.label, { color }]}>{label}</Text>
+    <View style={[styles.pill, { backgroundColor: theme.backgroundElement }]}>
+      <View style={[styles.dot, { backgroundColor: color }]} />
+      <Text style={[styles.label, { color: theme.text }]}>{label}</Text>
     </View>
   );
 }
@@ -54,12 +56,16 @@ export function Pill({ tone, label }: { tone: Tone; label: string }) {
 const styles = StyleSheet.create({
   pill: {
     alignSelf: 'flex-start',
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.half + 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one + 2,
+    paddingHorizontal: Spacing.two + 2,
+    paddingVertical: Spacing.one,
     borderRadius: Radius.pill,
   },
+  dot: { width: 7, height: 7, borderRadius: 4 },
   label: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
   },
 });

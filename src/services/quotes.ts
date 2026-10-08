@@ -1,4 +1,4 @@
-import type { Job, Profile, Quote, QuoteLineItem } from '@/services/database.types';
+import type { Job, Profile, Quote, QuoteLineItem, QuoteStatus } from '@/services/database.types';
 import { pageRange, toPage, type Page } from '@/services/pagination';
 import { supabase } from '@/services/supabase';
 
@@ -41,13 +41,26 @@ export async function listQuotesForJob(jobId: string): Promise<QuoteWithProvider
   }));
 }
 
+/** How many quotes a provider has sent, for the Jobs tab's segment count. */
+export async function countMyQuotes(providerId: string, statuses?: QuoteStatus[]): Promise<number> {
+  let q = supabase.from('quotes').select('id', { count: 'exact', head: true }).eq('provider_id', providerId);
+  if (statuses?.length) q = q.in('status', statuses);
+  const { count, error } = await q;
+  if (error) throw error;
+  return count ?? 0;
+}
+
 /** A provider's own submitted quotes, enriched with the job. */
-export async function listMyQuotes(providerId: string, page: number): Promise<Page<QuoteWithJob>> {
+export async function listMyQuotes(
+  providerId: string,
+  page: number,
+  /** Filtered in Postgres, so each status list paginates correctly. */
+  statuses?: QuoteStatus[],
+): Promise<Page<QuoteWithJob>> {
   const { from, to } = pageRange(page);
-  const { data: quotes, error } = await supabase
-    .from('quotes')
-    .select('*')
-    .eq('provider_id', providerId)
+  let query = supabase.from('quotes').select('*').eq('provider_id', providerId);
+  if (statuses?.length) query = query.in('status', statuses);
+  const { data: quotes, error } = await query
     .order('created_at', { ascending: false })
     // Unique tiebreaker so rows can't shuffle between pages.
     .order('id', { ascending: false })

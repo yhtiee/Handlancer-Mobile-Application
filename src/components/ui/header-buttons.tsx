@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Pressable, TouchableOpacity } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 
 import { Icon, type IconName } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
@@ -18,7 +18,7 @@ export function HeaderClose({ icon = 'chevron-back' }: { icon?: IconName }) {
         if (router.canGoBack()) router.back();
         else router.replace('/');
       }}>
-      <Icon name={icon} size={24} color={theme.tint} />
+      <Icon name={icon} size={24} color={theme.text} />
     </TouchableOpacity>
   );
 }
@@ -28,7 +28,7 @@ export function HeaderAction({ icon, onPress }: { icon: IconName; onPress: () =>
   const theme = useTheme();
   return (
     <TouchableOpacity hitSlop={12} onPress={onPress} accessibilityRole="button">
-      <Icon name={icon} size={22} color={theme.tint} />
+      <Icon name={icon} size={22} color={theme.text} />
     </TouchableOpacity>
   );
 }

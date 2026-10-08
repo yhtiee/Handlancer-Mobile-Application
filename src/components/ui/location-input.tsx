@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
@@ -161,17 +162,17 @@ export function LocationInput({
         style={({ pressed }) => [
           styles.gpsBtn,
           {
-            backgroundColor: theme.tint + '14',
-            borderColor: theme.tint + '33',
+            backgroundColor: theme.backgroundElement,
+            borderColor: theme.border,
             opacity: pressed || locating ? 0.7 : 1,
           },
         ]}>
         {locating ? (
-          <ActivityIndicator size="small" color={theme.tint} />
+          <ActivityIndicator size="small" color={theme.text} />
         ) : (
-          <Icon name="location-outline" size={16} color={theme.tint} />
+          <Icon name="location-outline" size={16} color={theme.text} />
         )}
-        <Text style={[styles.gpsBtnText, { color: theme.tint }]}>
+        <Text style={[styles.gpsBtnText, { color: theme.text }]}>
           {locating ? 'Getting current location...' : 'Use current location'}
         </Text>
       </Pressable>

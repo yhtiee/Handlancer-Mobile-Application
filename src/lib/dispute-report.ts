@@ -223,7 +223,7 @@ export function buildDisputeReport(
     section('THE MONEY', moneyBlock(escrow)),
     section('EVIDENCE ALREADY IN THE APP', evidenceBlock(media)),
     section('SCREENSHOTS', attachmentsBlock(channel, input.attachmentCount ?? 0)),
-    `Sent from the HandLancer app · ${formatDateTime(new Date().toISOString())}`,
+    `Sent from the Handlancer app · ${formatDateTime(new Date().toISOString())}`,
   ];
 
   return parts.filter(Boolean).join('\n\n');
@@ -272,7 +272,7 @@ export function buildProviderResponse(input: {
     ),
     section('THE MONEY', moneyBlock(escrow)),
     section('MY PROOF-OF-WORK ALREADY IN THE APP', evidenceBlock(media)),
-    `Sent from the HandLancer app · ${formatDateTime(new Date().toISOString())}`,
+    `Sent from the Handlancer app · ${formatDateTime(new Date().toISOString())}`,
   ]
     .filter(Boolean)
     .join('\n\n');

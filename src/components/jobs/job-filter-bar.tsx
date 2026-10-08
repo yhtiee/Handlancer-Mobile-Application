@@ -1,4 +1,5 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 
 import { Icon, type IconName } from '@/components/ui';
@@ -52,22 +53,22 @@ export function JobFilterBar({
           style={({ pressed }) => [
             styles.filterBtn,
             {
-              backgroundColor: active ? theme.tint : theme.backgroundElement,
-              borderColor: active ? theme.tint : theme.border,
+              backgroundColor: active ? theme.text : theme.backgroundElement,
+              borderColor: active ? theme.text : theme.border,
               opacity: pressed ? 0.85 : 1,
             },
           ]}>
           <Icon
             name="options"
             size={16}
-            color={active ? theme.tintText : theme.text}
+            color={active ? theme.background : theme.text}
           />
-          <Text style={[Type.callout, { color: active ? theme.tintText : theme.text }]}>
+          <Text style={[Type.callout, { color: active ? theme.background : theme.text }]}>
             Filters
           </Text>
           {active ? (
-            <View style={[styles.badge, { backgroundColor: theme.tintText }]}>
-              <Text style={[Type.micro, { color: theme.tint }]}>{active}</Text>
+            <View style={[styles.badge, { backgroundColor: theme.background }]}>
+              <Text style={[Type.micro, { color: theme.text }]}>{active}</Text>
             </View>
           ) : null}
         </Pressable>
@@ -85,20 +86,20 @@ export function JobFilterBar({
                 style={({ pressed }) => [
                   styles.trade,
                   {
-                    backgroundColor: selected ? theme.tint + '1F' : theme.backgroundElement,
-                    borderColor: selected ? theme.tint : 'transparent',
+                    backgroundColor: selected ? theme.text : theme.backgroundElement,
+                    borderColor: selected ? theme.text : 'transparent',
                     opacity: pressed ? 0.8 : 1,
                   },
                 ]}>
                 <Icon
                   name={c.icon as IconName}
                   size={14}
-                  color={selected ? theme.tint : theme.textSecondary}
+                  color={selected ? theme.background : theme.textSecondary}
                 />
                 <Text
                   style={[
                     Type.callout,
-                    { color: selected ? theme.tint : theme.textSecondary },
+                    { color: selected ? theme.background : theme.text },
                   ]}>
                   {c.label}
                 </Text>
@@ -114,9 +115,9 @@ export function JobFilterBar({
             <Pressable
               key={chip.key}
               onPress={() => onChange({ ...filters, ...chip.clear })}
-              style={[styles.activeChip, { backgroundColor: theme.tint + '14' }]}>
-              <Text style={[Type.caption, { color: theme.tint }]}>{chip.label}</Text>
-              <Icon name="close" size={12} color={theme.tint} />
+              style={[styles.activeChip, { backgroundColor: theme.backgroundElement }]}>
+              <Text style={[Type.caption, { color: theme.text }]}>{chip.label}</Text>
+              <Icon name="close" size={12} color={theme.text} />
             </Pressable>
           ))}
           <Pressable onPress={() => onChange(emptyJobFilters)} style={styles.clearAll}>

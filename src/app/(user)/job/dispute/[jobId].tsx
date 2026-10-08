@@ -4,7 +4,8 @@ import * as Linking from 'expo-linking';
 import * as MailComposer from 'expo-mail-composer';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@/components/ui/text';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { Button, Card, GlobalLoader, Icon, type IconName, Screen } from '@/components/ui';
@@ -331,11 +332,11 @@ function DescribeStep({
               style={[
                 styles.chip,
                 {
-                  backgroundColor: on ? theme.tint + '1F' : theme.backgroundElement,
-                  borderColor: on ? theme.tint : theme.border,
+                  backgroundColor: on ? theme.backgroundSelected : theme.backgroundElement,
+                  borderColor: on ? theme.text : theme.border,
                 },
               ]}>
-              <Text style={[Type.callout, { color: on ? theme.tint : theme.text }]}>{c.label}</Text>
+              <Text style={[Type.callout, { color: on ? theme.text : theme.text }]}>{c.label}</Text>
             </Pressable>
           );
         })}
@@ -386,14 +387,14 @@ function DescribeStep({
               style={[
                 styles.option,
                 {
-                  backgroundColor: on ? theme.tint + '12' : theme.backgroundElement,
-                  borderColor: on ? theme.tint : theme.border,
+                  backgroundColor: on ? theme.backgroundSelected : theme.backgroundElement,
+                  borderColor: on ? theme.text : theme.border,
                 },
               ]}>
               <Icon
                 name={on ? 'radio-button-on' : 'radio-button-off'}
                 size={20}
-                color={on ? theme.tint : theme.textSecondary}
+                color={on ? theme.text : theme.textSecondary}
               />
               <Text style={[Type.body, { color: theme.text, flex: 1 }]}>{o.label}</Text>
             </Pressable>
@@ -453,7 +454,7 @@ function SendStep({
           </Text>
           {reference ? (
             <View style={[styles.ref, { backgroundColor: theme.backgroundSelected }]}>
-              <Text style={[Type.caption, { color: theme.textSecondary }]}>REFERENCE</Text>
+              <Text style={[Type.caption, { color: theme.textSecondary }]}>Reference</Text>
               <Text selectable style={[Type.h3, { color: theme.text, letterSpacing: 1 }]}>
                 {reference}
               </Text>
@@ -476,7 +477,7 @@ function SendStep({
             small print under the buttons. ─────────────────────────────── */}
       <Card>
         <View style={styles.cardHead}>
-          <Icon name="images" size={18} color={theme.tint} />
+          <Icon name="images" size={18} color={theme.text} />
           <Text style={[Type.title, { color: theme.text }]}>Add screenshots</Text>
         </View>
         <Text style={[Type.callout, { color: theme.textSecondary, marginTop: Spacing.two }]}>
@@ -502,7 +503,7 @@ function SendStep({
             </Pressable>
           ) : null}
           <Pressable onPress={onPickShots} hitSlop={8}>
-            <Text style={[Type.callout, { color: theme.tint }]}>
+            <Text style={[Type.callout, { color: theme.text }]}>
               {shots.length ? 'Add more' : 'Choose'}
             </Text>
           </Pressable>
@@ -537,8 +538,8 @@ function SendStep({
       </View>
 
       {sentVia ? (
-        <View style={[styles.sent, { backgroundColor: theme.tint + '12' }]}>
-          <Icon name="information-circle" size={16} color={theme.tint} />
+        <View style={[styles.sent, { backgroundColor: theme.backgroundElement }]}>
+          <Icon name="information-circle" size={16} color={theme.text} />
           <Text style={[Type.callout, { color: theme.text, flex: 1 }]}>
             {sentVia === 'clipboard'
               ? 'Report copied. Paste it into an email or message to support.'
@@ -550,8 +551,8 @@ function SendStep({
       {/* ── The exact text, on demand. People are being asked to send a message
             in their own name; they are entitled to read it first. ─────── */}
       <Pressable onPress={onToggleReport} style={styles.reveal} hitSlop={8}>
-        <Icon name={showReport ? 'chevron-down' : 'chevron-forward'} size={16} color={theme.tint} />
-        <Text style={[Type.callout, { color: theme.tint }]}>
+        <Icon name={showReport ? 'chevron-down' : 'chevron-forward'} size={16} color={theme.text} />
+        <Text style={[Type.callout, { color: theme.text }]}>
           {showReport ? 'Hide the report' : 'Preview what will be sent'}
         </Text>
       </Pressable>
@@ -578,8 +579,8 @@ function Field({ n, label, hint }: { n: number; label: string; hint: string }) {
   return (
     <View style={styles.field}>
       <View style={styles.fieldHead}>
-        <View style={[styles.step, { backgroundColor: theme.tint + '1F' }]}>
-          <Text style={[Type.micro, { color: theme.tint }]}>{n}</Text>
+        <View style={[styles.step, { backgroundColor: theme.backgroundElement }]}>
+          <Text style={[Type.micro, { color: theme.text }]}>{n}</Text>
         </View>
         <Text style={[Type.h3, { color: theme.text }]}>{label}</Text>
       </View>

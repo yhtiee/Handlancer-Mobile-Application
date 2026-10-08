@@ -1,5 +1,5 @@
 /**
- * Where HandLancer support can be reached.
+ * Where Handlancer support can be reached.
  *
  * Centralised because the address was hard-coded in two screens and had already
  * drifted from the real mailbox. Anything that offers to contact support — the

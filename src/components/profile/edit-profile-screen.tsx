@@ -1,7 +1,8 @@
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@/components/ui/text';
 
 import { Avatar, Button, Card, Icon, Input, LocationInput, LocationValue, Screen, SkillsInput } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
@@ -135,16 +136,16 @@ export function EditProfileScreen() {
       <View style={styles.avatarSection}>
         <Pressable onPress={pickAvatarImage} disabled={uploadingAvatar} style={styles.avatarWrapper}>
           <Avatar uri={avatarUrl} name={name || profile?.name} size={96} />
-          <View style={[styles.avatarEditBadge, { backgroundColor: theme.tint }]}>
+          <View style={[styles.avatarEditBadge, { backgroundColor: theme.text }]}>
             {uploadingAvatar ? (
-              <ActivityIndicator size="small" color={theme.tintText} />
+              <ActivityIndicator size="small" color={theme.background} />
             ) : (
-              <Icon name="camera" size={16} color={theme.tintText} />
+              <Icon name="camera" size={16} color={theme.background} />
             )}
           </View>
         </Pressable>
         <Pressable onPress={pickAvatarImage} disabled={uploadingAvatar}>
-          <Text style={[styles.avatarHint, { color: theme.tint }]}>
+          <Text style={[styles.avatarHint, { color: theme.text }]}>
             {uploadingAvatar ? 'Uploading photo...' : 'Change profile photo'}
           </Text>
         </Pressable>
@@ -198,7 +199,7 @@ export function EditProfileScreen() {
                   {
                     color: theme.text,
                     backgroundColor: theme.backgroundElement,
-                    borderColor: bioFocused ? theme.tint : theme.border,
+                    borderColor: bioFocused ? theme.text : theme.border,
                   },
                 ]}
               />
@@ -244,14 +245,14 @@ export function EditProfileScreen() {
                       style={[
                         styles.availChip,
                         {
-                          backgroundColor: isSelected ? theme.tint : theme.backgroundElement,
-                          borderColor: isSelected ? theme.tint : theme.border,
+                          backgroundColor: isSelected ? theme.text : theme.backgroundElement,
+                          borderColor: isSelected ? theme.text : theme.border,
                         },
                       ]}>
                       <Text
                         style={[
                           styles.availChipText,
-                          { color: isSelected ? theme.tintText : theme.text },
+                          { color: isSelected ? theme.background : theme.text },
                         ]}>
                         {opt.label}
                       </Text>
@@ -296,7 +297,7 @@ export function EditProfileScreen() {
                 {
                   color: theme.text,
                   backgroundColor: theme.backgroundElement,
-                  borderColor: bioFocused ? theme.tint : theme.border,
+                  borderColor: bioFocused ? theme.text : theme.border,
                 },
               ]}
             />

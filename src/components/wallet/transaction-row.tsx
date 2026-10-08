@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
 import { formatMoney, Icon, type IconName } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
@@ -9,11 +10,11 @@ import type { Transaction, TxnType } from '@/services/database.types';
 import { useTheme } from '@/hooks/use-theme';
 
 const META: Record<TxnType, { label: string; icon: IconName; credit: boolean }> = {
-  fund: { label: 'Wallet top-up', icon: 'arrow-down-circle', credit: true },
-  withdraw: { label: 'Withdrawal', icon: 'arrow-up-circle', credit: false },
-  escrow_hold: { label: 'Into escrow', icon: 'lock-closed', credit: false },
-  escrow_release: { label: 'Materials released', icon: 'cube', credit: true },
-  payout: { label: 'Job payout', icon: 'checkmark-circle', credit: true },
+  fund: { label: 'Wallet funded', icon: 'arrow-down', credit: true },
+  withdraw: { label: 'Withdrawal', icon: 'arrow-up', credit: false },
+  escrow_hold: { label: 'Into escrow', icon: 'lock-closed-outline', credit: false },
+  escrow_release: { label: 'Materials released', icon: 'cube-outline', credit: true },
+  payout: { label: 'Job payout', icon: 'checkmark', credit: true },
 };
 
 export function TransactionRow({
@@ -27,19 +28,18 @@ export function TransactionRow({
   const router = useRouter();
   const m = META[txn.type];
   const credit = m.credit;
-  const color = credit ? theme.success : theme.text;
-  const tint =
-    txn.status === 'pending' ? theme.warning : credit ? theme.success : theme.textSecondary;
 
   return (
     <Pressable
       onPress={() => router.push(routes.walletTransaction(shell, txn.id))}
       style={({ pressed }) => [
         styles.row,
-        { backgroundColor: pressed ? theme.backgroundSelected : 'transparent' },
+        { borderBottomColor: theme.border, opacity: pressed ? 0.7 : 1 },
       ]}>
-      <View style={[styles.iconWrap, { backgroundColor: tint + '22' }]}>
-        <Icon name={m.icon} size={20} color={tint} />
+      {/* Neutral glyph on a raised disc: direction is told by the sign and
+          the arrow, not by colour, which fails contrast at this size. */}
+      <View style={[styles.iconWrap, { backgroundColor: theme.backgroundElement }]}>
+        <Icon name={m.icon} size={17} color={theme.text} />
       </View>
       <View style={styles.body}>
         <Text style={[styles.label, { color: theme.text }]}>{m.label}</Text>
@@ -50,7 +50,7 @@ export function TransactionRow({
       </View>
       {/* Amount and affordance share the trailing edge: the chevron is what
           tells the user the receipt behind this row exists at all. */}
-      <Text selectable={false} style={[styles.amount, { color }]}>
+      <Text selectable={false} style={[styles.amount, { color: theme.text }]}>
         {credit ? '+' : '−'}
         {formatMoney(txn.amount)}
       </Text>
@@ -64,16 +64,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.twoHalf,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.one,
-    borderRadius: Radius.md,
-    borderCurve: 'continuous',
+    paddingVertical: Spacing.twoHalf,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.md,
-    borderCurve: 'continuous',
+    width: 36,
+    height: 36,
+    borderRadius: Radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -81,5 +78,5 @@ const styles = StyleSheet.create({
   body: { flex: 1, gap: 2 },
   label: { fontSize: 15, fontWeight: '600' },
   meta: { fontSize: 13 },
-  amount: { fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  amount: { fontSize: 15, fontWeight: '600', fontVariant: ['tabular-nums'] },
 });

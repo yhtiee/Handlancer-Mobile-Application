@@ -1,6 +1,7 @@
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@/components/ui/text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Card, Icon, SuccessModal } from '@/components/ui';
@@ -54,7 +55,7 @@ export function TransferPinScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + Spacing.four }]}>
         <Card>
           <View style={styles.head}>
-            <Icon name="lock-closed" size={18} color={theme.tint} />
+            <Icon name="lock-closed" size={18} color={theme.text} />
             <Text style={[Type.bodyMedium, { color: theme.text }]}>
               Your PIN protects withdrawals
             </Text>

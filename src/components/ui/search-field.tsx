@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { TextInput } from '@/components/ui/text';
 
 import { Icon } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
@@ -43,9 +44,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
     paddingHorizontal: Spacing.three,
-    height: 46,
-    borderRadius: Radius.md,
+    height: 48,
+    borderRadius: Radius.pill,
     borderCurve: 'continuous',
   },
-  input: { flex: 1, fontSize: 16, paddingVertical: 0 },
+  input: { flex: 1, fontSize: 15, paddingVertical: 0 },
 });

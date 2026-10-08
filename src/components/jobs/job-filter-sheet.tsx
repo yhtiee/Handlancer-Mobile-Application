@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@/components/ui/text';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -86,7 +87,7 @@ function FilterSheetBody({ onClose, value, onApply, search }: SheetProps) {
             <Text style={[Type.h2, { color: theme.text }]}>Filters</Text>
             {active > 0 ? (
               <Pressable onPress={() => setDraft(emptyJobFilters)} hitSlop={8}>
-                <Text style={[Type.bodyMedium, { color: theme.tint }]}>Reset all</Text>
+                <Text style={[Type.bodyMedium, { color: theme.text }]}>Reset all</Text>
               </Pressable>
             ) : null}
           </View>
@@ -234,7 +235,7 @@ function Section({
     <View style={styles.section}>
       <View style={styles.sectionHead}>
         <Text style={[Type.h3, { color: theme.text }]}>{title}</Text>
-        {hint ? <Text style={[Type.caption, { color: theme.tint }]}>{hint}</Text> : null}
+        {hint ? <Text style={[Type.caption, { color: theme.text }]}>{hint}</Text> : null}
       </View>
       {children}
     </View>
@@ -259,16 +260,16 @@ function Chip({
       style={({ pressed }) => [
         styles.chip,
         {
-          backgroundColor: selected ? theme.tint : theme.backgroundElement,
-          borderColor: selected ? theme.tint : theme.border,
+          backgroundColor: selected ? theme.text : theme.backgroundElement,
+          borderColor: selected ? theme.text : theme.border,
           opacity: pressed ? 0.8 : 1,
         },
       ]}>
       {icon ? (
-        <Icon name={icon} size={14} color={selected ? theme.tintText : theme.textSecondary} />
+        <Icon name={icon} size={14} color={selected ? theme.background : theme.textSecondary} />
       ) : null}
       <Text
-        style={[Type.callout, { color: selected ? theme.tintText : theme.text }]}>
+        style={[Type.callout, { color: selected ? theme.background : theme.text }]}>
         {label}
       </Text>
     </Pressable>
@@ -295,11 +296,11 @@ function Toggle({
       style={[
         styles.toggle,
         {
-          backgroundColor: value ? theme.tint + '14' : theme.backgroundElement,
-          borderColor: value ? theme.tint + '44' : 'transparent',
+          backgroundColor: value ? theme.backgroundSelected : theme.backgroundElement,
+          borderColor: value ? theme.backgroundSelected : 'transparent',
         },
       ]}>
-      <Icon name={icon} size={18} color={value ? theme.tint : theme.textSecondary} />
+      <Icon name={icon} size={18} color={value ? theme.text : theme.textSecondary} />
       <View style={{ flex: 1 }}>
         <Text style={[Type.bodyMedium, { color: theme.text }]}>{label}</Text>
         <Text style={[Type.caption, { color: theme.textSecondary }]}>{hint}</Text>
@@ -308,11 +309,11 @@ function Toggle({
         style={[
           styles.check,
           {
-            backgroundColor: value ? theme.tint : 'transparent',
-            borderColor: value ? theme.tint : theme.border,
+            backgroundColor: value ? theme.text : 'transparent',
+            borderColor: value ? theme.text : theme.border,
           },
         ]}>
-        {value ? <Icon name="checkmark" size={13} color={theme.tintText} /> : null}
+        {value ? <Icon name="checkmark" size={13} color={theme.background} /> : null}
       </View>
     </Pressable>
   );

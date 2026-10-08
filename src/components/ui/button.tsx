@@ -1,12 +1,6 @@
 import * as Haptics from 'expo-haptics';
-import {
-  ActivityIndicator,
-  Pressable,
-  type PressableProps,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, type PressableProps, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
 import { Icon, type IconName } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
@@ -22,6 +16,8 @@ export type ButtonProps = Omit<PressableProps, 'children'> & {
   loading?: boolean;
   /** Ionicons name, e.g. "add" or "send". */
   icon?: IconName;
+  /** Override the label/icon colour, for buttons that sit on a photo. */
+  labelColor?: string;
 };
 
 export function Button({
@@ -30,6 +26,7 @@ export function Button({
   size = 'md',
   loading = false,
   icon,
+  labelColor,
   disabled,
   onPress,
   style,
@@ -41,10 +38,10 @@ export function Button({
   const palette: Record<Variant, { bg: string; fg: string; border?: string }> = {
     primary: { bg: theme.tint, fg: theme.tintText },
     secondary: { bg: theme.backgroundElement, fg: theme.text },
-    ghost: { bg: 'transparent', fg: theme.tint },
+    ghost: { bg: 'transparent', fg: theme.text },
     destructive: { bg: theme.danger, fg: '#ffffff' },
   };
-  const c = palette[variant];
+  const c = { ...palette[variant], ...(labelColor ? { fg: labelColor } : null) };
 
   return (
     <Pressable
@@ -84,16 +81,15 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    height: 48,
+    height: 50,
     paddingHorizontal: Spacing.four,
-    borderRadius: Radius.md,
+    borderRadius: Radius.pill,
     borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },
   lg: {
-    height: 56,
-    borderRadius: Radius.lg,
+    height: 54,
   },
   content: {
     flexDirection: 'row',
@@ -105,8 +101,9 @@ const styles = StyleSheet.create({
     height: 18,
   },
   label: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
+    letterSpacing: -0.2,
   },
   labelLg: {
     fontSize: 17,

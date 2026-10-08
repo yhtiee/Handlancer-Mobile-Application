@@ -1,4 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
 import { Elevation, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -12,7 +14,8 @@ export function SegmentedControl<T extends string>({
   value,
   onChange,
 }: {
-  options: { value: T; label: string }[];
+  /** `count` is shown after the label; leave it undefined while it loads. */
+  options: { value: T; label: string; count?: number }[];
   value: T;
   onChange: (value: T) => void;
 }) {
@@ -24,7 +27,12 @@ export function SegmentedControl<T extends string>({
         return (
           <Pressable
             key={opt.value}
-            onPress={() => onChange(opt.value)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            onPress={() => {
+              if (!active && process.env.EXPO_OS === 'ios') Haptics.selectionAsync();
+              onChange(opt.value);
+            }}
             style={[
               styles.segment,
               active && { backgroundColor: theme.background, boxShadow: Elevation.sm },
@@ -33,6 +41,12 @@ export function SegmentedControl<T extends string>({
               numberOfLines={1}
               style={[styles.label, { color: active ? theme.text : theme.textSecondary }]}>
               {opt.label}
+              {opt.count != null ? (
+                <Text style={[styles.count, { color: theme.textSecondary }]}>
+                  {' '}
+                  {opt.count > 999 ? `${Math.floor(opt.count / 1000)}k+` : opt.count}
+                </Text>
+              ) : null}
             </Text>
           </Pressable>
         );
@@ -57,5 +71,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  label: { fontSize: 14, fontWeight: '600' },
+  label: { fontSize: 15, fontWeight: '600' },
+  count: { fontWeight: '500', fontVariant: ['tabular-nums'] },
 });

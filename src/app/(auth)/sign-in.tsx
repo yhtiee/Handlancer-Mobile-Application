@@ -1,11 +1,12 @@
-import { useRouter } from 'expo-router';
+import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Input, Screen } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
+import { Layout, Radius, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { routes } from '@/lib/routes';
 import {
@@ -21,7 +22,11 @@ export default function SignIn() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [mode, setMode] = useState<Mode>('signin');
+  // Set when the person chose a role on the welcome screen; carried to role select.
+  const { role } = useLocalSearchParams<{ role?: 'user' | 'provider' }>();
+  const roleSelect = (role ? `/(auth)/role-select?role=${role}` : '/(auth)/role-select') as Href;
+  // Choosing a role on welcome means they are new here; "Sign in" there does not.
+  const [mode, setMode] = useState<Mode>(role ? 'signup' : 'signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -63,12 +68,12 @@ export default function SignIn() {
           return;
         }
         // New account → choose a role next.
-        router.replace('/(auth)/role-select');
+        router.replace(roleSelect);
       } else {
         const { user } = await signInWithEmail(email, password);
         const profile = await getProfileById(user.id);
         if (!profile) {
-          router.replace('/(auth)/role-select');
+          router.replace(roleSelect);
         } else {
           // Straight to the role's home. Going via '/' would land on the splash
           // screen and bounce back through welcome.
@@ -95,7 +100,7 @@ export default function SignIn() {
           </Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
             {mode === 'signin'
-              ? 'Sign in to continue to HandLancer.'
+              ? 'Sign in to continue to Handlancer.'
               : 'Sign up to post jobs or offer your services.'}
           </Text>
         </Animated.View>
@@ -113,8 +118,8 @@ export default function SignIn() {
               style={[
                 styles.segmentItem,
                 {
-                  color: mode === m ? theme.tintText : theme.textSecondary,
-                  backgroundColor: mode === m ? theme.tint : 'transparent',
+                  color: mode === m ? theme.background : theme.textSecondary,
+                  backgroundColor: mode === m ? theme.text : 'transparent',
                 },
               ]}>
               {m === 'signin' ? 'Sign in' : 'Create account'}
@@ -170,21 +175,20 @@ export default function SignIn() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: Spacing.four, gap: Spacing.four },
+  content: { paddingHorizontal: Layout.gutter, gap: Spacing.four },
   header: { gap: Spacing.two },
-  title: { fontSize: 28, fontWeight: '700' },
-  subtitle: { fontSize: 16, lineHeight: 22 },
+  title: { ...Type.serif },
+  subtitle: { ...Type.body },
   segment: {
     flexDirection: 'row',
-    padding: Spacing.half,
-    borderRadius: 12,
-    borderCurve: 'continuous',
+    padding: 3,
+    borderRadius: Radius.pill,
   },
   segmentItem: {
     flex: 1,
     textAlign: 'center',
-    paddingVertical: Spacing.two,
-    borderRadius: 10,
+    paddingVertical: Spacing.two + 2,
+    borderRadius: Radius.pill,
     fontWeight: '600',
     overflow: 'hidden',
   },

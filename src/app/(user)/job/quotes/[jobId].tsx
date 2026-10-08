@@ -1,242 +1,248 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { QuoteCard } from '@/components/quotes/quote-card';
 import {
   Button,
-  Card,
+  ConfirmModal,
   EmptyState,
   formatMoney,
+  GlassButton,
   GlobalLoader,
-  Icon,
-  MoneyText,
   ScreenView,
   SuccessModal,
 } from '@/components/ui';
-import { Layout, Radius, Spacing } from '@/constants/theme';
-import { routes } from '@/lib/routes';
-import { useStartConversation } from '@/queries/use-chat';
-import { useApproveQuote, useJobQuotes, useRejectQuote } from '@/queries/use-quotes';
-import { useFundEscrow, useWallet } from '@/queries/use-wallet';
-import type { QuoteWithProvider } from '@/services/quotes';
+import { Text } from '@/components/ui/text';
+import { Layout, Radius, Spacing, Type } from '@/constants/theme';
 import { useContentInset } from '@/hooks/use-insets';
 import { useTheme } from '@/hooks/use-theme';
+import { routes } from '@/lib/routes';
+import { useStartConversation } from '@/queries/use-chat';
+import { useJob } from '@/queries/use-jobs';
+import { useApproveQuote, useJobQuotes, useRejectQuote } from '@/queries/use-quotes';
+import { useEscrow, useFundEscrow, useWallet } from '@/queries/use-wallet';
+import type { QuoteWithProvider } from '@/services/quotes';
 
+/**
+ * Every quote on a job, cheapest first. Tap one to open it in place — its
+ * lines, the provider's note — and accept or decline right there. Nothing on
+ * this screen sends you anywhere else to decide.
+ */
 export default function JobQuotes() {
   const theme = useTheme();
   const router = useRouter();
-  const bottomInset = useContentInset();
+  const insets = useSafeAreaInsets();
+  const bottom = useContentInset();
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
+  const { data: job } = useJob(jobId);
   const { data: quotes, isLoading, refetch, isRefetching } = useJobQuotes(jobId);
+  const { data: escrow } = useEscrow(jobId);
   const { data: wallet } = useWallet();
   const approve = useApproveQuote(jobId);
   const reject = useRejectQuote(jobId);
   const fund = useFundEscrow(jobId);
   const startChat = useStartConversation();
 
-  const [escrowModalQuote, setEscrowModalQuote] = useState<QuoteWithProvider | null>(null);
-  const [escrowError, setEscrowError] = useState<string | null>(null);
-  const [approveError, setApproveError] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null | undefined>(undefined);
+  const [declining, setDeclining] = useState<QuoteWithProvider | null>(null);
+  const [paying, setPaying] = useState<QuoteWithProvider | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [hired, setHired] = useState<{ name: string; amount: number } | null>(null);
 
-  const approvedQuote = quotes?.find((q) => q.status === 'approved');
-  const decided = Boolean(approvedQuote);
+  // Accepted on top, declined last, cheapest first in between.
+  const sorted = useMemo(() => {
+    const rank = (q: QuoteWithProvider) => (q.status === 'approved' ? 0 : q.status === 'rejected' ? 2 : 1);
+    return [...(quotes ?? [])].sort((a, b) => rank(a) - rank(b) || a.total - b.total);
+  }, [quotes]);
 
-  async function message(quote: QuoteWithProvider) {
-    const convo = await startChat.mutateAsync({ providerId: quote.provider_id, jobId });
+  const accepted = sorted.find((q) => q.status === 'approved');
+  const funded = Boolean(escrow) && escrow!.status !== 'pending';
+  // Until the client taps, the accepted quote (or the cheapest) is open.
+  const open = openId === undefined ? (accepted ?? sorted[0])?.id ?? null : openId;
+  const first = (q: QuoteWithProvider) => q.provider?.name?.trim().split(' ')[0] ?? 'this provider';
+  const live = sorted.filter((q) => q.status !== 'rejected').length;
+
+  async function accept(q: QuoteWithProvider) {
+    setError(null);
+    try {
+      await approve.mutateAsync(q);
+      setPaying(q);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not accept the quote.');
+    }
+  }
+
+  async function payIntoEscrow() {
+    if (!paying) return;
+    setError(null);
+    try {
+      await fund.mutateAsync();
+      setHired({ name: paying.provider?.name ?? 'The provider', amount: paying.total });
+      setPaying(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'The payment did not go through.');
+    }
+  }
+
+  async function message(q: QuoteWithProvider) {
+    const convo = await startChat.mutateAsync({ providerId: q.provider_id, jobId });
     router.push(routes.chatThread('user', convo.id));
   }
 
-  async function handleApprove(quote: QuoteWithProvider) {
-    setApproveError(null);
-    try {
-      await approve.mutateAsync(quote);
-      setEscrowModalQuote(quote);
-    } catch (e) {
-      setApproveError(e instanceof Error ? e.message : 'Could not approve quote');
+  /** The decision, inside the open quote. */
+  function decision(q: QuoteWithProvider) {
+    if (q.status === 'rejected') return null;
+    const msg = (
+      <Pressable hitSlop={8} onPress={() => message(q)} disabled={startChat.isPending} style={styles.msg}>
+        <Text style={[Type.bodyMedium, styles.link, { color: theme.text }]}>Message {first(q)}</Text>
+      </Pressable>
+    );
+    if (q.status === 'approved') {
+      return (
+        <View style={styles.actions}>
+          {funded ? (
+            <Button title="Go to the job" variant="secondary" style={{ backgroundColor: theme.background }} onPress={() => router.push(routes.jobDetail(jobId))} />
+          ) : (
+            <Button title={`Pay ${formatMoney(q.total)} into escrow`} size="lg" onPress={() => setPaying(q)} />
+          )}
+          {msg}
+        </View>
+      );
     }
-  }
-
-  async function handleConfirmEscrowPayment() {
-    if (!escrowModalQuote) return;
-    setEscrowError(null);
-    try {
-      await fund.mutateAsync();
-      setHired({
-        name: escrowModalQuote.provider?.name ?? 'The provider',
-        amount: escrowModalQuote.total,
-      });
-      setEscrowModalQuote(null);
-    } catch (e) {
-      setEscrowError(e instanceof Error ? e.message : 'Escrow payment failed.');
+    if (accepted) {
+      // Another quote is already accepted; this one can only be discussed.
+      return <View style={styles.actions}>{msg}</View>;
     }
-  }
-
-  function renderActions(quote: QuoteWithProvider) {
-    const isThisApproved = quote.status === 'approved';
-    const canDecide = quote.status !== 'approved' && quote.status !== 'rejected' && !decided;
-
     return (
-      <View style={{ gap: Spacing.two }}>
-        <Button
-          title="Message provider"
-          variant="secondary"
-          icon="chatbubble"
-          disabled={startChat.isPending}
-          onPress={() => message(quote)}
-        />
-
-        {isThisApproved ? (
+      <View style={styles.actions}>
+        <View style={styles.row}>
           <Button
-            title="Complete Escrow Payment & Hire"
-            icon="lock-closed"
-            size="lg"
-            onPress={() => setEscrowModalQuote(quote)}
+            title="Decline"
+            variant="secondary"
+            style={{ flex: 1, backgroundColor: theme.background }}
+            disabled={approve.isPending}
+            onPress={() => setDeclining(q)}
           />
-        ) : null}
-
-        {canDecide ? (
-          <View style={{ flexDirection: 'row', gap: Spacing.two }}>
-            <Button
-              title="Reject"
-              variant="ghost"
-              style={{ flex: 1 }}
-              disabled={reject.isPending || approve.isPending}
-              onPress={() => reject.mutate(quote.id)}
-            />
-            <Button
-              title="Approve & Hire"
-              icon="checkmark"
-              style={{ flex: 1.4 }}
-              loading={approve.isPending && approve.variables?.id === quote.id}
-              onPress={() => handleApprove(quote)}
-            />
-          </View>
-        ) : null}
+          <Button
+            title={`Accept · ${formatMoney(q.total)}`}
+            style={{ flex: 1.6 }}
+            loading={approve.isPending && approve.variables?.id === q.id}
+            onPress={() => accept(q)}
+          />
+        </View>
+        {msg}
       </View>
     );
   }
 
   const walletBalance = wallet?.balance ?? 0;
-  const targetQuoteTotal = escrowModalQuote?.total ?? 0;
-  const isBalanceSufficient = walletBalance >= targetQuoteTotal;
+  const amount = paying?.total ?? 0;
+  const enough = walletBalance >= amount;
 
   return (
     <ScreenView>
-      <Stack.Screen options={{ title: 'Quotes' }} />
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={[styles.toolbar, { paddingTop: insets.top + Spacing.one }]}>
+        <GlassButton
+          icon="chevron-back"
+          accessibilityLabel="Back"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace(routes.jobDetail(jobId)))}
+        />
+      </View>
+
       {isLoading ? (
         <GlobalLoader backgroundColor="transparent" />
       ) : (
         <FlatList
-          data={quotes}
+          data={sorted}
           keyExtractor={(item) => item.id}
           onRefresh={refetch}
           refreshing={isRefetching}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: Layout.gutter,
-            paddingTop: Layout.headerGap,
-            paddingBottom: bottomInset,
-            gap: Layout.listGap,
-          }}
+          contentContainerStyle={{ paddingHorizontal: Layout.gutter, paddingBottom: bottom, gap: Spacing.twoHalf }}
           ListHeaderComponent={
-            approveError ? (
-              <Text selectable style={[styles.errorText, { color: theme.danger }]}>
-                {approveError}
+            <View style={styles.header}>
+              <Text style={[Type.caption, { color: theme.textSecondary }]}>Quotes for</Text>
+              <Text style={[Type.serifTitle, { color: theme.text }]}>{job?.title ?? ' '}</Text>
+              <Text style={[Type.body, { color: theme.textSecondary }]}>
+                {live} {live === 1 ? 'quote' : 'quotes'}
+                {job?.budget != null ? ` · your budget ${formatMoney(job.budget)}` : ''} · cheapest first
               </Text>
-            ) : null
+              {error ? (
+                <Text selectable style={[Type.callout, { color: theme.danger }]}>
+                  {error}
+                </Text>
+              ) : null}
+            </View>
           }
-          renderItem={({ item }) => <QuoteCard quote={item}>{renderActions(item)}</QuoteCard>}
+          renderItem={({ item }) => (
+            <QuoteCard quote={item} expanded={open === item.id} onToggle={() => setOpenId(open === item.id ? null : item.id)}>
+              {decision(item)}
+            </QuoteCard>
+          )}
           ListEmptyComponent={
             <EmptyState
               icon="document-text-outline"
               title="No quotes yet"
-              description="When providers apply to your job, their quotes show up here for review."
+              description="When providers quote on your job, they show here."
             />
           }
         />
       )}
 
-      {/* Escrow Funding & Auto-Hire Modal */}
-      <Modal
-        visible={Boolean(escrowModalQuote)}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setEscrowModalQuote(null)}>
-        <View style={styles.modalOverlay}>
-          <Pressable style={styles.backdrop} onPress={() => setEscrowModalQuote(null)} />
+      <ConfirmModal
+        visible={Boolean(declining)}
+        onCancel={() => setDeclining(null)}
+        onConfirm={() => {
+          if (declining) reject.mutate(declining.id);
+          setDeclining(null);
+        }}
+        icon="close"
+        tone="danger"
+        title={`Decline ${declining ? first(declining) : ''}’s quote?`}
+        message="They’ll be told you went another way. This can’t be undone."
+        confirmLabel="Decline"
+        loading={reject.isPending}
+      />
 
-          <View style={[styles.sheet, { backgroundColor: theme.background }]}>
-            <View style={styles.sheetHeader}>
-              <View style={[styles.iconBadge, { backgroundColor: theme.tint + '1F' }]}>
-                <Icon name="lock-closed" size={24} color={theme.tint} />
-              </View>
-              <Text style={[styles.sheetTitle, { color: theme.text }]}>
-                Escrow Payment Required
-              </Text>
-              <Text style={[styles.sheetSubtitle, { color: theme.textSecondary }]}>
-                Fund escrow to confirm hiring {escrowModalQuote?.provider?.name ?? 'the provider'}.
+      {/* Pay into escrow to confirm the hire. */}
+      <Modal visible={Boolean(paying)} transparent animationType="slide" onRequestClose={() => setPaying(null)}>
+        <View style={styles.overlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setPaying(null)} />
+          <View style={[styles.sheet, { backgroundColor: theme.background, paddingBottom: insets.bottom + Spacing.four }]}>
+            <View style={[styles.grabber, { backgroundColor: theme.backgroundSelected }]} />
+            <View style={{ gap: Spacing.one }}>
+              <Text style={[Type.serifTitle, { color: theme.text }]}>Pay {formatMoney(amount)} into escrow</Text>
+              <Text style={[Type.callout, { color: theme.textSecondary }]}>
+                It confirms {paying?.provider?.name ?? 'the provider'} for the job. The money stays held until you
+                release each stage.
               </Text>
             </View>
-
-            <Card style={styles.detailsCard}>
-              <Row label="Materials Subtotal" amount={escrowModalQuote?.materials_cost ?? 0} />
-              <Row label="Labour Subtotal" amount={escrowModalQuote?.labor_cost ?? 0} />
-              <View style={[styles.divider, { backgroundColor: theme.border }]} />
-              <Row label="Total Escrow Amount" amount={targetQuoteTotal} isBold />
-            </Card>
-
-            <View style={[styles.walletBox, { backgroundColor: theme.backgroundElement }]}>
-              <View style={styles.walletRow}>
-                <Text style={[styles.walletLabel, { color: theme.textSecondary }]}>
-                  Your Available Wallet Balance:
-                </Text>
-                <MoneyText amount={walletBalance} style={{ fontSize: 16, fontWeight: '700' }} />
-              </View>
-
-              {!isBalanceSufficient ? (
-                <Text style={[styles.balanceWarning, { color: theme.danger }]}>
-                  Short by {formatMoney(targetQuoteTotal - walletBalance)}. Fund your wallet to complete hiring.
-                </Text>
-              ) : (
-                <Text style={[styles.balanceOk, { color: theme.success }]}>
-                  ✓ Sufficient balance for instant hiring confirmation.
-                </Text>
-              )}
+            <View>
+              <SheetRow label="Into escrow" value={formatMoney(amount)} bold />
+              <SheetRow label="Your wallet" value={formatMoney(walletBalance)} />
             </View>
-
-            {escrowError ? (
-              <Text style={[styles.errorText, { color: theme.danger }]}>{escrowError}</Text>
+            {!enough ? (
+              <Text style={[Type.callout, { color: theme.danger }]}>
+                You’re {formatMoney(amount - walletBalance)} short. Fund your wallet first.
+              </Text>
             ) : null}
-
-            <View style={styles.sheetActions}>
+            {enough ? (
+              <Button title={`Pay ${formatMoney(amount)}`} size="lg" loading={fund.isPending} onPress={payIntoEscrow} />
+            ) : (
               <Button
-                title="Cancel"
-                variant="ghost"
-                onPress={() => setEscrowModalQuote(null)}
-                style={{ flex: 1 }}
+                title="Fund wallet"
+                size="lg"
+                icon="add"
+                onPress={() => {
+                  setPaying(null);
+                  router.push(routes.walletFund('user'));
+                }}
               />
-              {isBalanceSufficient ? (
-                <Button
-                  title={`Pay ${formatMoney(targetQuoteTotal)} & Hire`}
-                  icon="checkmark-circle"
-                  loading={fund.isPending}
-                  onPress={handleConfirmEscrowPayment}
-                  style={{ flex: 2 }}
-                />
-              ) : (
-                <Button
-                  title="Fund Wallet & Pay"
-                  icon="wallet-outline"
-                  onPress={() => {
-                    setEscrowModalQuote(null);
-                    router.push(routes.walletFund('user'));
-                  }}
-                  style={{ flex: 2 }}
-                />
-              )}
-            </View>
+            )}
+            <Button title="Not now" variant="ghost" onPress={() => setPaying(null)} />
           </View>
         </View>
       </Modal>
@@ -248,7 +254,7 @@ export default function JobQuotes() {
           router.push(routes.jobDetail(jobId));
         }}
         title="Provider hired"
-        message={`${hired?.name ?? 'The provider'} has been hired and your payment is held safely in escrow. Work can begin now.`}
+        message={`${hired?.name ?? 'The provider'} is hired and your payment is held in escrow. Work can start now.`}
         amount={hired?.amount}
         actionLabel="Go to job"
       />
@@ -256,105 +262,38 @@ export default function JobQuotes() {
   );
 }
 
-function Row({ label, amount, isBold }: { label: string; amount: number; isBold?: boolean }) {
+function SheetRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   const theme = useTheme();
   return (
-    <View style={styles.row}>
-      <Text
-        style={[
-          styles.rowLabel,
-          { color: isBold ? theme.text : theme.textSecondary, fontWeight: isBold ? '700' : '400' },
-        ]}>
-        {label}
-      </Text>
-      <MoneyText amount={amount} style={{ fontSize: isBold ? 16 : 14, fontWeight: isBold ? '700' : '500' }} />
+    <View style={[styles.sheetRow, { borderBottomColor: theme.border }]}>
+      <Text style={[bold ? Type.bodyMedium : Type.body, { color: bold ? theme.text : theme.textSecondary }]}>{label}</Text>
+      <Text style={[bold ? Type.bodyMedium : Type.body, styles.num, { color: theme.text }]}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFill,
-  },
+  toolbar: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.two },
+  header: { gap: Spacing.two, paddingBottom: Spacing.three },
+  actions: { gap: Spacing.two, marginTop: Spacing.one },
+  row: { flexDirection: 'row', gap: Spacing.two },
+  msg: { alignSelf: 'center', paddingVertical: Spacing.one },
+  link: { textDecorationLine: 'underline' },
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(10, 18, 32, 0.5)' },
   sheet: {
-    borderTopLeftRadius: Radius.xl,
-    borderTopRightRadius: Radius.xl,
+    borderTopLeftRadius: Radius.xxl,
+    borderTopRightRadius: Radius.xxl,
     borderCurve: 'continuous',
-    padding: Spacing.four,
-    gap: Spacing.three,
+    paddingHorizontal: Layout.gutter,
+    paddingTop: Spacing.two,
+    gap: Spacing.four,
   },
-  sheetHeader: {
-    alignItems: 'center',
-    gap: Spacing.one,
-    paddingTop: Spacing.one,
-  },
-  iconBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.one,
-  },
-  sheetTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  sheetSubtitle: {
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  detailsCard: {
-    gap: Spacing.two,
-  },
-  row: {
+  grabber: { width: 36, height: 5, borderRadius: 3, alignSelf: 'center' },
+  sheetRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingVertical: Spacing.twoHalf,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  rowLabel: {
-    fontSize: 14,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    marginVertical: 2,
-  },
-  walletBox: {
-    padding: Spacing.three,
-    borderRadius: Radius.md,
-    gap: Spacing.one,
-  },
-  walletRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  walletLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  balanceWarning: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  balanceOk: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  errorText: {
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  sheetActions: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-    marginTop: Spacing.two,
-  },
+  num: { fontVariant: ['tabular-nums'] },
 });

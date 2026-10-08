@@ -1,29 +1,27 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, Icon, type IconName, Input } from '@/components/ui';
-import { Radius, Spacing } from '@/constants/theme';
+import { Button, Icon, Input } from '@/components/ui';
+import { Layout, Radius, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { routes } from '@/lib/routes';
 import { useAuth } from '@/providers/auth-provider';
 import type { UserRole } from '@/services/database.types';
 import { createProfile } from '@/services/auth';
 
-const OPTIONS: { role: UserRole; icon: IconName; title: string; desc: string }[] = [
+const OPTIONS: { role: UserRole; title: string; desc: string }[] = [
   {
     role: 'user',
-    icon: 'person',
-    title: 'I need a job done',
-    desc: 'Post jobs, review quotes and hire trusted artisans.',
+    title: 'I need something done',
+    desc: 'Post a job, compare quotes, pay through escrow.',
   },
   {
     role: 'provider',
-    icon: 'construct',
-    title: 'I provide services',
-    desc: 'Find work, send quotes and get paid securely.',
+    title: 'I do the work',
+    desc: 'Find jobs near you, send quotes, get paid by stage.',
   },
 ];
 
@@ -33,13 +31,17 @@ export default function RoleSelect() {
   const insets = useSafeAreaInsets();
   const { session, refreshProfile } = useAuth();
 
-  const [role, setRole] = useState<UserRole | null>(null);
+  // Pre-picked when the person chose on the welcome screen.
+  const { role: preset } = useLocalSearchParams<{ role?: UserRole }>();
+  const [role, setRole] = useState<UserRole | null>(
+    preset === 'user' || preset === 'provider' ? preset : null,
+  );
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleContinue() {
-    if (!role) return setError('Choose how you want to use HandLancer');
+    if (!role) return setError('Choose how you want to use Handlancer');
     if (!name.trim()) return setError('Enter your name');
     if (!session) return setError('Session expired. Please sign in again.');
 
@@ -76,18 +78,20 @@ export default function RoleSelect() {
           { paddingTop: insets.top + Spacing.five, paddingBottom: insets.bottom + Spacing.four },
         ]}>
         <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>How will you use HandLancer?</Text>
+          <Text style={[styles.title, { color: theme.text }]}>How will you use Handlancer?</Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
             You can switch later in settings.
           </Text>
         </View>
 
         <View style={styles.options}>
-          {OPTIONS.map((opt, i) => {
+          {OPTIONS.map((opt) => {
             const selected = role === opt.role;
             return (
-              <Animated.View key={opt.role} entering={FadeInDown.delay(i * 80)}>
+              <View key={opt.role}>
                 <Pressable
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
                   onPress={() => {
                     setRole(opt.role);
                     setError(null);
@@ -96,20 +100,26 @@ export default function RoleSelect() {
                     styles.card,
                     {
                       backgroundColor: theme.backgroundElement,
-                      borderColor: selected ? theme.tint : 'transparent',
+                      borderColor: selected ? theme.text : 'transparent',
                     },
                   ]}>
-                  <View style={[styles.iconWrap, { backgroundColor: theme.tint + '22' }]}>
-                    <Icon name={opt.icon} size={26} color={theme.tint} />
-                  </View>
                   <View style={styles.cardText}>
                     <Text style={[styles.cardTitle, { color: theme.text }]}>{opt.title}</Text>
                     <Text style={[styles.cardDesc, { color: theme.textSecondary }]}>
                       {opt.desc}
                     </Text>
                   </View>
+                  <View
+                    style={[
+                      styles.radio,
+                      selected
+                        ? { backgroundColor: theme.text, borderColor: theme.text }
+                        : { borderColor: theme.textSecondary },
+                    ]}>
+                    {selected ? <Icon name="checkmark" size={14} color={theme.background} /> : null}
+                  </View>
                 </Pressable>
-              </Animated.View>
+              </View>
             );
           })}
         </View>
@@ -119,7 +129,7 @@ export default function RoleSelect() {
           value={name}
           onChangeText={setName}
           error={error}
-          placeholder="Jane Doe"
+          placeholder="Tolu Adeyemi"
           autoCapitalize="words"
         />
 
@@ -130,10 +140,10 @@ export default function RoleSelect() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: Spacing.four, gap: Spacing.four },
+  content: { paddingHorizontal: Layout.gutter, gap: Spacing.four },
   header: { gap: Spacing.two },
-  title: { fontSize: 28, fontWeight: '700' },
-  subtitle: { fontSize: 16, lineHeight: 22 },
+  title: { ...Type.serif },
+  subtitle: { ...Type.body },
   options: { gap: Spacing.three },
   card: {
     flexDirection: 'row',
@@ -142,17 +152,16 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     borderRadius: Radius.lg,
     borderCurve: 'continuous',
-    borderWidth: 2,
+    borderWidth: 1.5,
   },
-  iconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: Radius.md,
-    borderCurve: 'continuous',
+  radio: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  icon: { width: 26, height: 26 },
   cardText: { flex: 1, gap: 2 },
   cardTitle: { fontSize: 17, fontWeight: '600' },
   cardDesc: { fontSize: 14, lineHeight: 19 },

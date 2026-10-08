@@ -1,29 +1,17 @@
-import { Image } from 'expo-image';
 import { KeyboardAvoidingView, Platform, ScrollView, type ScrollViewProps, View, type ViewProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Layout, Spacing } from '@/constants/theme';
 import { EmptyState } from '@/components/ui/empty-state';
 import type { IconName } from '@/components/ui/icon';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 
-const BG_LIGHT = require('@/assets/images/bg_light.png');
-const BG_DARK = require('@/assets/images/bg_dark.png');
-
-/** Non-scrolling screen container with the themed gradient background. */
+/** Non-scrolling screen container on the flat ground colour. */
 export function ScreenView({ style, children, ...rest }: ViewProps) {
-  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
-  const backgroundImage = scheme === 'dark' ? BG_DARK : BG_LIGHT;
   const theme = useTheme();
 
   return (
     <View style={[{ flex: 1, backgroundColor: theme.background }, style]} {...rest}>
-      <Image
-        source={backgroundImage}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-        contentFit="cover"
-      />
       {children}
     </View>
   );
@@ -31,12 +19,10 @@ export function ScreenView({ style, children, ...rest }: ViewProps) {
 
 /**
  * Standard scrollable screen body for a Stack child: handles safe-area insets
- * automatically and applies the themed gradient background.
+ * automatically and sits on the flat ground colour.
  * Includes KeyboardAvoidingView to keep inputs visible when keyboard appears.
  */
 export function Screen({ children, contentContainerStyle, style, ...rest }: ScrollViewProps) {
-  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
-  const backgroundImage = scheme === 'dark' ? BG_DARK : BG_LIGHT;
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -46,11 +32,6 @@ export function Screen({ children, contentContainerStyle, style, ...rest }: Scro
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 96 : 0}>
       <View style={{ flex: 1 }}>
-        <Image
-          source={backgroundImage}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-          contentFit="cover"
-        />
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}

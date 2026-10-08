@@ -20,3 +20,7 @@ export { SegmentedControl } from '@/components/ui/segmented-control';
 export { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 export { JobStatusPill, Pill, QuoteStatusPill } from '@/components/ui/status-pill';
 export { TabButton } from '@/components/ui/tab-bar';
+export { GlassButton } from '@/components/ui/glass-button';
+export { PhotoHeader } from '@/components/ui/photo-header';
+export { Tape, type TapeMark } from '@/components/ui/tape';
+export { Text, TextInput } from '@/components/ui/text';

@@ -1,9 +1,10 @@
-import { Link, Stack, useLocalSearchParams } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
-import { Avatar, Button, Card, GlobalLoader, Icon, JobStatusPill, MoneyText, QuoteStatusPill, Screen } from '@/components/ui';
-import { categoryIcon, categoryLabel } from '@/constants/categories';
-import { Radius, Spacing } from '@/constants/theme';
+import { Avatar, Button, Card, GlobalLoader, JobStatusPill, MoneyText, QuoteStatusPill, Screen } from '@/components/ui';
+import { categoryLabel } from '@/constants/categories';
+import { Spacing, Type } from '@/constants/theme';
 import { formatDate, timeAgo } from '@/lib/date';
 import { routes } from '@/lib/routes';
 import { useJob } from '@/queries/use-jobs';
@@ -14,6 +15,7 @@ import { useTheme } from '@/hooks/use-theme';
 
 export default function FindWorkJob() {
   const theme = useTheme();
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: job, isLoading } = useJob(id);
   const { data: myQuote } = useMyQuoteForJob(id);
@@ -39,9 +41,6 @@ export default function FindWorkJob() {
       <Stack.Screen options={{ title: '' }} />
       <Screen contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <View style={[styles.iconWrap, { backgroundColor: theme.tint + '22' }]}>
-            <Icon name={categoryIcon(job.category)} size={28} color={theme.tint} />
-          </View>
           <Text selectable style={[styles.title, { color: theme.text }]}>
             {job.title}
           </Text>
@@ -60,10 +59,10 @@ export default function FindWorkJob() {
             <Avatar uri={job.owner?.avatar_url} name={job.owner?.name} size={44} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.customerLabel, { color: theme.textSecondary }]}>
-                POSTED BY
+                Posted by
               </Text>
               <Text numberOfLines={1} style={[styles.customerName, { color: theme.text }]}>
-                {job.owner?.name ?? 'HandLancer customer'}
+                {job.owner?.name ?? 'Handlancer customer'}
               </Text>
               {job.owner?.location ? (
                 <Text numberOfLines={1} style={[styles.meta, { color: theme.textSecondary }]}>
@@ -106,7 +105,7 @@ export default function FindWorkJob() {
             <>
               <Divider />
               <Row label="Invitation">
-                <Text style={[styles.value, { color: theme.tint }]}>Direct invite</Text>
+                <Text style={[styles.value, { color: theme.text }]}>Direct invite</Text>
               </Row>
             </>
           ) : null}
@@ -139,20 +138,15 @@ export default function FindWorkJob() {
               <MoneyText amount={myQuote.total} style={{ fontSize: 16 }} />
             </View>
             {myQuote.status !== 'approved' ? (
-              <Link href={routes.applyToJob(job.id)} asChild>
-                <Button
+              <Button
                   title="Update quote"
                   variant="secondary"
                   icon="pencil"
-                  style={{ marginTop: Spacing.three }}
-                />
-              </Link>
+                  style={{ marginTop: Spacing.three }} onPress={() => router.push(routes.applyToJob(job.id))} />
             ) : null}
           </Card>
         ) : canApply ? (
-          <Link href={routes.applyToJob(job.id)} asChild>
-            <Button title="Submit a quote" size="lg" icon="send" />
-          </Link>
+          <Button title="Submit a quote" size="lg" icon="send" onPress={() => router.push(routes.applyToJob(job.id))} />
         ) : (
           <Text style={[styles.closed, { color: theme.textSecondary }]}>
             This job is no longer accepting quotes.
@@ -182,16 +176,8 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { gap: Spacing.four, paddingTop: Spacing.three },
   header: { gap: Spacing.two },
-  iconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: Radius.md,
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   icon: { width: 28, height: 28 },
-  title: { fontSize: 26, fontWeight: '700' },
+  title: { ...Type.h1 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, flexWrap: 'wrap' },
   meta: { fontSize: 14 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: Spacing.two },
@@ -202,7 +188,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontWeight: '600' },
   body: { fontSize: 16, lineHeight: 24 },
   customerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  customerLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.4 },
+  customerLabel: { fontSize: 13, fontWeight: '500' },
   customerName: { fontSize: 17, fontWeight: '600', marginTop: 1 },
   quoteHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   quoteTotalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: Spacing.two },

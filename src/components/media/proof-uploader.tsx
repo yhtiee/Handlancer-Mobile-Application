@@ -1,6 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
 import { Icon } from '@/components/ui';
 import { MediaThumb } from '@/components/media/media-gallery';
@@ -65,9 +66,9 @@ export function ProofUploader({ jobId, media }: { jobId: string; media: JobMedia
 
   return (
     <View style={{ gap: Spacing.three }}>
-      <Text style={[styles.title, { color: theme.text }]}>Proof of work</Text>
       <Text style={[styles.hint, { color: theme.textSecondary }]}>
-        Upload before & after photos or videos. These build your profile résumé.
+        Before and after photos or videos. The client checks them before paying, and they show
+        on your profile as your work.
       </Text>
 
       {(['before', 'after'] as MediaPhase[]).map((phase) => {
@@ -93,11 +94,11 @@ export function ProofUploader({ jobId, media }: { jobId: string; media: JobMedia
                 disabled={busy}
                 style={[styles.addTile, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
                 {busy ? (
-                  <ActivityIndicator color={theme.tint} />
+                  <ActivityIndicator color={theme.text} />
                 ) : (
                   <>
-                    <Icon name="add" size={20} color={theme.tint} />
-                    <Text style={[styles.addText, { color: theme.tint }]}>Add</Text>
+                    <Icon name="add" size={20} color={theme.text} />
+                    <Text style={[styles.addText, { color: theme.text }]}>Add</Text>
                   </>
                 )}
               </Pressable>
@@ -126,10 +127,9 @@ export function ProofUploader({ jobId, media }: { jobId: string; media: JobMedia
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 18, fontWeight: '700' },
   hint: { fontSize: 14, lineHeight: 20, marginTop: -Spacing.one },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  phaseLabel: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  phaseLabel: { fontSize: 13, fontWeight: '600' },
   addTile: {
     width: 84,
     height: 84,

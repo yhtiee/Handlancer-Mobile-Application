@@ -2,9 +2,10 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 
 import { useAuth } from '@/providers/auth-provider';
 import { queryKeys } from '@/queries/keys';
-import type { Quote } from '@/services/database.types';
+import type { Quote, QuoteStatus } from '@/services/database.types';
 import {
   approveQuote,
+  countMyQuotes,
   getMyQuoteForJob,
   getQuote,
   listMyQuotes,
@@ -23,14 +24,24 @@ export function useJobQuotes(jobId: string) {
 }
 
 /** The provider's own quotes, paginated. */
-export function useMyQuotes() {
+export function useMyQuotes(statuses?: QuoteStatus[]) {
   const { session } = useAuth();
   const providerId = session?.user.id;
   return useInfiniteQuery({
-    queryKey: queryKeys.quotes.mine(),
-    queryFn: ({ pageParam }) => listMyQuotes(providerId!, pageParam),
+    queryKey: queryKeys.quotes.mine(statuses?.join('+')),
+    queryFn: ({ pageParam }) => listMyQuotes(providerId!, pageParam, statuses),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => lastPage.nextPage,
+    enabled: !!providerId,
+  });
+}
+
+export function useMyQuotesCount(statuses?: QuoteStatus[]) {
+  const { session } = useAuth();
+  const providerId = session?.user.id;
+  return useQuery({
+    queryKey: queryKeys.quotes.mineCount(statuses?.join('+')),
+    queryFn: () => countMyQuotes(providerId!, statuses),
     enabled: !!providerId,
   });
 }

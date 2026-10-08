@@ -75,6 +75,6 @@ export function describeNotification(
     case 'payout':
       return { icon: 'card', title: 'Payment received', body: money(p.amount) };
     default:
-      return { icon: 'notifications', title: 'HandLancer', body: 'You have a new notification' };
+      return { icon: 'notifications', title: 'Handlancer', body: 'You have a new notification' };
   }
 }

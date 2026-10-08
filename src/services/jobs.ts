@@ -250,6 +250,28 @@ export async function listProviderJobs(
   return toPage(data, page);
 }
 
+/** How many of the client's jobs are in a segment — counted in Postgres, not from loaded pages. */
+export async function countMyJobs(ownerId: string, segment: UserJobSegment): Promise<number> {
+  const { count, error } = await supabase
+    .from('jobs')
+    .select('id', { count: 'exact', head: true })
+    .eq('owner_id', ownerId)
+    .in('status', USER_SEGMENT_STATUSES[segment]);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/** How many hired jobs a provider has in a segment. */
+export async function countProviderJobs(providerId: string, segment: ProviderJobSegment): Promise<number> {
+  const { count, error } = await supabase
+    .from('jobs')
+    .select('id', { count: 'exact', head: true })
+    .eq('hired_provider_id', providerId)
+    .in('status', PROVIDER_SEGMENT_STATUSES[segment]);
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function updateJobStatus(id: string, status: JobStatus): Promise<void> {
   const { error } = await supabase.from('jobs').update({ status }).eq('id', id);
   if (error) throw error;

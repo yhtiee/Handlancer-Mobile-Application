@@ -1,5 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
 import { Icon, type IconName, MoneyText } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
@@ -35,42 +35,37 @@ export function EscrowTimeline({
   const steps = buildSteps(job, escrow, role);
   if (!steps.length) return null;
 
-  const colorFor = (state: StepState) =>
-    state === 'done' ? theme.success : state === 'active' ? theme.tint : theme.textSecondary;
 
   return (
     <View style={styles.wrap}>
       {steps.map((step, i) => {
-        const color = colorFor(step.state);
         const last = i === steps.length - 1;
         const dim = step.state === 'upcoming';
 
         return (
-          <Animated.View
-            key={step.key}
-            entering={FadeInDown.delay(i * 60).springify().damping(18)}
-            style={styles.row}>
+          <View key={step.key} style={styles.row}>
             {/* Rail: dot plus the connector down to the next step. */}
             <View style={styles.rail}>
+              {/* Done is a filled ink check, the live step an ink ring, the rest
+                  a hairline ring. Teal stays on the tape. */}
               <View
                 style={[
                   styles.dot,
-                  {
-                    backgroundColor: dim ? 'transparent' : color + '1F',
-                    borderColor: dim ? theme.border : color + '55',
-                  },
+                  step.state === 'done'
+                    ? { backgroundColor: theme.text, borderColor: theme.text }
+                    : step.state === 'active'
+                      ? { borderColor: theme.text, borderWidth: 2 }
+                      : { borderColor: theme.backgroundSelected, borderWidth: 1.5 },
                 ]}>
-                <Icon
-                  name={step.state === 'done' ? 'checkmark' : step.icon}
-                  size={15}
-                  color={color}
-                />
+                {step.state === 'done' ? (
+                  <Icon name="checkmark" size={14} color={theme.background} />
+                ) : null}
               </View>
               {!last ? (
                 <View
                   style={[
                     styles.connector,
-                    { backgroundColor: step.state === 'done' ? theme.success + '55' : theme.border },
+                    { backgroundColor: step.state === 'done' ? theme.text : theme.border },
                   ]}
                 />
               ) : null}
@@ -94,13 +89,8 @@ export function EscrowTimeline({
               </View>
               <Text style={[Type.caption, { color: theme.textSecondary }]}>{step.detail}</Text>
 
-              {step.state === 'active' ? (
-                <View style={[styles.chip, { backgroundColor: theme.tint + '1A' }]}>
-                  <Text style={[Type.micro, { color: theme.tint }]}>IN PROGRESS</Text>
-                </View>
-              ) : null}
             </View>
-          </Animated.View>
+          </View>
         );
       })}
     </View>
@@ -201,23 +191,16 @@ function buildSteps(
 const styles = StyleSheet.create({
   wrap: { gap: 0 },
   row: { flexDirection: 'row', gap: Spacing.three },
-  rail: { alignItems: 'center', width: 32 },
+  rail: { alignItems: 'center', width: 22 },
   dot: {
-    width: 32,
-    height: 32,
+    width: 22,
+    height: 22,
     borderRadius: Radius.pill,
-    borderWidth: 1,
+    marginTop: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  connector: { width: 2, flex: 1, minHeight: Spacing.four, marginVertical: Spacing.half },
-  body: { flex: 1, gap: 2, paddingBottom: Spacing.four },
+  connector: { width: 1.5, flex: 1, minHeight: Spacing.three, marginVertical: Spacing.one },
+  body: { flex: 1, gap: 2, paddingBottom: Spacing.threeHalf },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  chip: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 3,
-    borderRadius: Radius.pill,
-    marginTop: Spacing.one,
-  },
 });

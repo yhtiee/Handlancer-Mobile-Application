@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
-import { FlatList, Pressable, Text } from 'react-native';
+import { FlatList, Pressable } from 'react-native';
+import { Text } from '@/components/ui/text';
 
 import { NotificationRow } from '@/components/notifications/notification-row';
 import { EmptyState, GlobalLoader, ListFooter, ScreenView } from '@/components/ui';
@@ -30,7 +31,7 @@ export function NotificationsScreen() {
           headerRight: hasUnread
             ? () => (
                 <Pressable hitSlop={8} onPress={() => markAll.mutate()}>
-                  <Text style={{ color: theme.tint, fontWeight: '600', fontSize: 15 }}>
+                  <Text style={{ color: theme.text, fontWeight: '600', fontSize: 15 }}>
                     Mark all read
                   </Text>
                 </Pressable>

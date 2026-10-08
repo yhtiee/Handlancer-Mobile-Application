@@ -1,11 +1,8 @@
 import { type Href } from 'expo-router';
 import { Tabs, TabList, TabSlot, TabTrigger } from 'expo-router/ui';
-import { StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TabButton } from '@/components/ui';
-import { Elevation, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { useFloatingTabBarStyle } from '@/components/ui/tab-bar';
 
 /**
  * The four real tabs. Secondary screens live on the shell Stack in the parent
@@ -13,22 +10,12 @@ import { useTheme } from '@/hooks/use-theme';
  * about them.
  */
 export default function UserTabsLayout() {
-  const theme = useTheme();
-  const insets = useSafeAreaInsets();
+  const barStyle = useFloatingTabBarStyle();
 
   return (
     <Tabs>
       <TabSlot />
-      <TabList
-        style={[
-          styles.bar,
-          {
-            backgroundColor: theme.background,
-            borderTopColor: theme.border,
-            paddingBottom: insets.bottom + Spacing.one,
-            boxShadow: Elevation.lg,
-          },
-        ]}>
+      <TabList style={barStyle}>
         <TabTrigger name="home" href={'/(user)/(tabs)/(discover)' as Href} asChild>
           <TabButton icon="home-outline" iconFocused="home" label="Home" />
         </TabTrigger>
@@ -46,11 +33,3 @@ export default function UserTabsLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  bar: {
-    flexDirection: 'row',
-    paddingTop: Spacing.two,
-    paddingHorizontal: Spacing.two,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-});

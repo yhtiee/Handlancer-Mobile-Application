@@ -1,11 +1,19 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Design tokens. The direction behind them lives in design/redesign/DIRECTION.md:
+ * the person doing the job leads the screen, and escrow is drawn as a tape measure.
+ *
+ * Colour hex values are fixed brand values. What changed in the redesign is
+ * their roles: `tint` means "money or work in motion" (the tape, Post, Accept,
+ * Fund, Release, the selected tab) and nothing else; `accent` (navy) is display
+ * ink and the hue of photo scrims.
  */
 
 import '@/global.css';
 
-import { Platform } from 'react-native';
+import type { TextStyle } from 'react-native';
+
+/** Tabular figures for anything that counts or sits in a column. */
+const tabular: TextStyle['fontVariant'] = ['tabular-nums'];
 
 export const Colors = {
   light: {
@@ -16,11 +24,12 @@ export const Colors = {
     textSecondary: '#5B6772',
     border: '#E5E9EC',
     tint: '#0FB5A4',
-    tintText: '#ffffff',
+    /** Ink, not white: white on #0FB5A4 is 2.57:1 and fails contrast. */
+    tintText: '#10151B',
     success: '#16A34A',
     warning: '#C77700',
     danger: '#E5484D',
-    /** Deep brand navy, for accents and the splash. */
+    /** Deep brand navy: display ink, photo scrims, the splash. */
     accent: '#1E3A5F',
   },
   dark: {
@@ -39,41 +48,48 @@ export const Colors = {
   },
 } as const;
 
+/** The navy-black every photo scrim is mixed from, so type on photos sits in the workwear's hue. */
+export const Scrim = '10, 18, 32';
+
 /** Border radii. Pair with `{ borderCurve: 'continuous' }` on rounded rects. */
 export const Radius = {
   sm: 8,
   md: 12,
   lg: 16,
   xl: 24,
+  /** Sheets and the floating tab bar. */
+  xxl: 28,
   pill: 999,
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
+/**
+ * Bundled families (loaded in the root layout with `useFonts`). On Android a
+ * runtime-loaded font ignores `fontWeight`, so every weight is its own family;
+ * `Text` from `@/components/ui/text` maps `fontWeight` onto these for you.
+ */
+export const FontFamily = {
+  text: {
+    400: 'InstrumentSans_400Regular',
+    500: 'InstrumentSans_500Medium',
+    600: 'InstrumentSans_600SemiBold',
+    700: 'InstrumentSans_700Bold',
   },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
+  display: {
+    400: 'Newsreader_400Regular',
+    500: 'Newsreader_500Medium',
+    600: 'Newsreader_600SemiBold',
+    700: 'Newsreader_700Bold',
   },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
+  displayItalic: {
+    400: 'Newsreader_400Regular_Italic',
+    500: 'Newsreader_500Medium_Italic',
+    600: 'Newsreader_600SemiBold_Italic',
+    700: 'Newsreader_700Bold_Italic',
   },
-});
+} as const;
+
 
 /**
  * 4pt spacing grid. Each `xHalf` step is the midpoint of the two steps around
@@ -94,25 +110,39 @@ export const Spacing = {
 } as const;
 
 /**
- * Typographic scale. Spread onto a `<Text>` style for consistent sizing/weight
- * across the app, e.g. `style={[Type.h2, { color: theme.text }]}`.
+ * Typographic scale: Newsreader for the screen's sentence and titles,
+ * Instrument Sans for everything else, tabular figures for money. Seven real
+ * steps (48 / 40 / 28 / 17 / 15 / 13 / 11); the older names map onto them.
+ * Spread onto a `<Text>` style, e.g. `style={[Type.h2, { color: theme.text }]}`.
  */
 export const Type = {
-  display: { fontSize: 32, fontWeight: '800', lineHeight: 38, letterSpacing: -0.5 },
-  h1: { fontSize: 26, fontWeight: '800', lineHeight: 32, letterSpacing: -0.3 },
-  h2: { fontSize: 22, fontWeight: '700', lineHeight: 28, letterSpacing: -0.2 },
-  h3: { fontSize: 18, fontWeight: '700', lineHeight: 24 },
-  title: { fontSize: 16, fontWeight: '600', lineHeight: 22 },
-  body: { fontSize: 15, fontWeight: '400', lineHeight: 21 },
-  bodyMedium: { fontSize: 15, fontWeight: '600', lineHeight: 21 },
-  callout: { fontSize: 14, fontWeight: '500', lineHeight: 19 },
-  caption: { fontSize: 13, fontWeight: '500', lineHeight: 17 },
-  micro: { fontSize: 11, fontWeight: '600', lineHeight: 14, letterSpacing: 0.3 },
+  /** The one money figure on a screen. */
+  amount: { fontFamily: FontFamily.text[600], fontSize: 48, lineHeight: 52, letterSpacing: -1.5, fontVariant: tabular },
+  /** The screen's sentence, usually on a photo. Italicise the meaning word with `TypeItalic`. */
+  serif: { fontFamily: FontFamily.display[500], fontSize: 40, lineHeight: 42, letterSpacing: -0.8 },
+  /** Screen and sheet titles. */
+  serifTitle: { fontFamily: FontFamily.display[500], fontSize: 28, lineHeight: 32, letterSpacing: -0.4 },
+
+  /** Big figures (balances, ratings). Same as `amount`. */
+  display: { fontFamily: FontFamily.text[600], fontSize: 48, lineHeight: 52, letterSpacing: -1.5, fontVariant: tabular },
+  h1: { fontFamily: FontFamily.display[500], fontSize: 28, lineHeight: 32, letterSpacing: -0.4 },
+  h2: { fontFamily: FontFamily.display[500], fontSize: 28, lineHeight: 32, letterSpacing: -0.4 },
+  h3: { fontFamily: FontFamily.text[600], fontSize: 17, lineHeight: 22, letterSpacing: -0.2 },
+  title: { fontFamily: FontFamily.text[600], fontSize: 17, lineHeight: 22, letterSpacing: -0.2 },
+  body: { fontFamily: FontFamily.text[400], fontSize: 15, lineHeight: 21 },
+  bodyMedium: { fontFamily: FontFamily.text[600], fontSize: 15, lineHeight: 21 },
+  callout: { fontFamily: FontFamily.text[500], fontSize: 15, lineHeight: 21 },
+  caption: { fontFamily: FontFamily.text[500], fontSize: 13, lineHeight: 18 },
+  micro: { fontFamily: FontFamily.text[600], fontSize: 11, lineHeight: 14, letterSpacing: 0.3 },
 } as const;
+
+/** The italic partner of a serif step, for the one word that carries the meaning. */
+export const TypeItalic = { fontFamily: FontFamily.displayItalic[500] } as const;
 
 /**
  * Elevation as CSS `boxShadow` strings (cross-platform on the New Arch — never
- * use legacy RN `shadow*`/`elevation`). Apply via `boxShadow: Elevation.md`.
+ * use legacy RN `shadow*`/`elevation`). Content sits flat; shadows belong to
+ * the floating layer only (tab bar, sheets, toasts).
  */
 export const Elevation = {
   none: 'none',
@@ -121,17 +151,7 @@ export const Elevation = {
   lg: '0 14px 32px rgba(16, 21, 27, 0.12)',
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 
-/**
- * Height of the custom tab bar's own content, EXCLUDING the bottom safe-area
- * inset that the bar adds on top of it. Derived from the bar in
- * `(tabs)/_layout.tsx`: paddingTop 8 + button (30 pill + 3 gap + 14 label) +
- * paddingBottom 4. Never pad a tab screen's scroll content by this alone —
- * use `useTabBarInset()`, which adds the safe area.
- */
-export const TabBarHeight = 60;
-export const MaxContentWidth = 800;
 
 /**
  * Screen scaffolding. Every screen composes from these rather than picking
@@ -140,11 +160,11 @@ export const MaxContentWidth = 800;
  */
 export const Layout = {
   /** Horizontal gutter for all screen content. */
-  gutter: Spacing.four,
+  gutter: Spacing.threeHalf,
   /** Space between a header and the content below it. */
   headerGap: Spacing.three,
   /** Space between cards/rows within a list. */
-  listGap: Spacing.three,
+  listGap: Spacing.twoHalf,
   /** Space between major sections on a screen. */
   sectionGap: Spacing.five,
   /** Space above a screen header's content, added to the top safe-area inset. */

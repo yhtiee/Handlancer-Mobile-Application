@@ -1,9 +1,11 @@
 import Constants from 'expo-constants';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
-import { Button, Card, Icon, type IconName, Screen } from '@/components/ui';
+import { Button, Card, Icon, type IconName, Screen, SegmentedControl } from '@/components/ui';
+import { useAppearance } from '@/lib/appearance';
 import { Radius, Spacing } from '@/constants/theme';
 import { routes } from '@/lib/routes';
 import { useAuth } from '@/providers/auth-provider';
@@ -18,6 +20,7 @@ export function SettingsScreen() {
   const { session, profile } = useAuth();
   const shell = profile?.role === 'provider' ? 'provider' : 'user';
   const { data: security } = useWalletSecurity();
+  const [appearance, setAppearance] = useAppearance();
 
   const [pushStatus, setPushStatus] = useState<string | null>(null);
   const [pushOk, setPushOk] = useState(false);
@@ -65,6 +68,22 @@ export function SettingsScreen() {
   return (
     <Screen contentContainerStyle={styles.content}>
       <Stack.Screen options={{ title: 'Settings' }} />
+
+      <View style={styles.section}>
+        <Text style={[styles.heading, { color: theme.textSecondary }]}>Appearance</Text>
+        <SegmentedControl
+          value={appearance}
+          onChange={setAppearance}
+          options={[
+            { value: 'system', label: 'System' },
+            { value: 'light', label: 'Light' },
+            { value: 'dark', label: 'Dark' },
+          ]}
+        />
+        <Text style={[styles.note, { color: theme.textSecondary }]}>
+          System follows your phone’s light or dark setting.
+        </Text>
+      </View>
 
       <View style={styles.section}>
         <Text style={[styles.heading, { color: theme.textSecondary }]}>Wallet security</Text>
@@ -131,7 +150,7 @@ export function SettingsScreen() {
       </View>
 
       <Text style={[styles.version, { color: theme.textSecondary }]}>
-        HandLancer v{Constants.expoConfig?.version ?? '1.0.0'}
+        Handlancer v{Constants.expoConfig?.version ?? '1.0.0'}
       </Text>
     </Screen>
   );
@@ -172,7 +191,7 @@ function SecurityRow({
       </View>
       {done ? null : (
         <View style={[styles.todoPill, { backgroundColor: theme.warning + '1F' }]}>
-          <Text style={[styles.todoText, { color: theme.warning }]}>REQUIRED</Text>
+          <Text style={[styles.todoText, { color: theme.warning }]}>Required</Text>
         </View>
       )}
       <Icon name="chevron-forward" size={16} color={theme.textSecondary} />

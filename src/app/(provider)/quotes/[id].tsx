@@ -1,124 +1,172 @@
-import { Link, Stack, useLocalSearchParams } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, Card, GlobalLoader, JobStatusPill, MoneyText, QuoteStatusPill, Screen } from '@/components/ui';
-import { Radius, Spacing } from '@/constants/theme';
+import { Button, formatMoney, GlassButton, GlobalLoader } from '@/components/ui';
+import { Text } from '@/components/ui/text';
+import { Layout, Radius, Spacing, Type } from '@/constants/theme';
+import { useContentInset } from '@/hooks/use-insets';
+import { useTheme } from '@/hooks/use-theme';
 import { timeAgo } from '@/lib/date';
 import { routes } from '@/lib/routes';
+import { useProvider } from '@/queries/use-providers';
 import { useQuote } from '@/queries/use-quotes';
-import { useTheme } from '@/hooks/use-theme';
+import type { QuoteLineItem } from '@/services/database.types';
 
+/**
+ * One sent quote: where it stands in a sentence, what it charges (labour and
+ * materials, as the escrow pays them), the note, and the one thing to do.
+ */
 export default function ProviderQuoteDetail() {
   const theme = useTheme();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const bottom = useContentInset();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: quote, isLoading } = useQuote(id);
+  const { data: client } = useProvider(quote?.job?.owner_id ?? '');
 
   if (isLoading || !quote) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <Stack.Screen options={{ title: '' }} />
+        <Stack.Screen options={{ headerShown: false }} />
         {isLoading ? (
           <GlobalLoader backgroundColor="transparent" />
         ) : (
-          <Text style={{ color: theme.textSecondary }}>Quote not found.</Text>
+          <Text style={[Type.body, { color: theme.textSecondary }]}>Quote not found.</Text>
         )}
       </View>
     );
   }
 
+  const who = client?.name?.trim().split(' ')[0] ?? 'The client';
+  const job = quote.job;
+  const jobOpen = job?.status === 'posted' || job?.status === 'hiring';
+  const hired = quote.status === 'approved' && (job?.status === 'in_progress' || job?.status === 'completed' || job?.status === 'disputed');
+
+  const state =
+    quote.status === 'rejected'
+      ? { headline: 'Not chosen', detail: `${who} went with another quote.` }
+      : hired
+        ? { headline: 'You’re hired', detail: `${who} paid into escrow. The job is under way.` }
+        : quote.status === 'approved'
+          ? { headline: 'Accepted', detail: `Waiting for ${who} to pay into escrow. Don’t start until they do.` }
+          : jobOpen
+            ? { headline: `Waiting for ${who} to decide`, detail: 'You can change your quote until they accept one.' }
+            : { headline: 'This job is closed', detail: 'The client is no longer taking quotes.' };
+
+  const labour = quote.line_items.filter((i) => i.type === 'labor');
+  const materials = quote.line_items.filter((i) => i.type === 'material');
+
   return (
-    <>
-      <Stack.Screen options={{ title: 'Your Quote' }} />
-      <Screen contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text selectable style={[styles.title, { color: theme.text }]}>
-            {quote.job?.title ?? 'Job'}
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={[styles.toolbar, { paddingTop: insets.top + Spacing.one }]}>
+        <GlassButton
+          icon="chevron-back"
+          accessibilityLabel="Back"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace(routes.providerQuotes))}
+        />
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: bottom }]}>
+        <View style={{ gap: Spacing.two }}>
+          <Text style={[Type.caption, { color: theme.textSecondary }]}>Your quote for</Text>
+          <Text selectable style={[Type.serifTitle, { color: theme.text }]}>
+            {job?.title ?? 'Job'}
           </Text>
-          <View style={styles.metaRow}>
-            <QuoteStatusPill status={quote.status} />
-            {quote.job ? <JobStatusPill status={quote.job.status} /> : null}
-            <Text style={[styles.meta, { color: theme.textSecondary }]}>
-              {timeAgo(quote.created_at)}
-            </Text>
-          </View>
+          <Text style={[Type.body, { color: theme.textSecondary }]}>
+            {[client?.name, job?.location, `sent ${timeAgo(quote.created_at)}`].filter(Boolean).join(' · ')}
+          </Text>
         </View>
 
-        <Card>
-          {quote.line_items.map((item, i) => (
-            <View key={i} style={styles.line}>
-              <Text style={[styles.lineLabel, { color: theme.text }]}>
-                {item.label || (item.type === 'material' ? 'Material' : 'Labour')}
-              </Text>
-              <MoneyText amount={item.amount} style={{ fontSize: 14, fontWeight: '500' }} />
-            </View>
-          ))}
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          <View style={styles.totalRow}>
-            <Text style={[styles.totalLabel, { color: theme.text }]}>Total</Text>
-            <MoneyText amount={quote.total} style={{ fontSize: 18 }} />
+        {/* ── Where it stands ─────────────────────────────────────── */}
+        <View style={[styles.panel, { backgroundColor: theme.backgroundElement }]}>
+          <Text style={[Type.serifTitle, { color: theme.text, fontSize: 22, lineHeight: 28 }]}>{state.headline}</Text>
+          <Text style={[Type.body, { color: theme.textSecondary }]}>{state.detail}</Text>
+          {hired ? (
+            <Button
+              title="Go to the job"
+              style={{ marginTop: Spacing.two, backgroundColor: theme.background }}
+              variant="secondary"
+              onPress={() => router.push(routes.providerJobDetail(quote.job_id))}
+            />
+          ) : jobOpen && quote.status !== 'rejected' && quote.status !== 'approved' ? (
+            <Button
+              title="Change my quote"
+              variant="secondary"
+              style={{ marginTop: Spacing.two, backgroundColor: theme.background }}
+              onPress={() => router.push(routes.applyToJob(quote.job_id))}
+            />
+          ) : null}
+        </View>
+
+        {/* ── What it charges ─────────────────────────────────────── */}
+        <View style={{ gap: Spacing.four }}>
+          <Lines title="Labour" items={labour} total={quote.labor_cost} />
+          {materials.length ? <Lines title="Materials" items={materials} total={quote.materials_cost} /> : null}
+          <View style={[styles.totalRow, { borderTopColor: theme.text }]}>
+            <Text style={[Type.title, { color: theme.text }]}>Total</Text>
+            <Text style={[styles.total, { color: theme.text }]}>{formatMoney(quote.total)}</Text>
           </View>
-        </Card>
+          {job?.budget != null ? (
+            <Text style={[Type.caption, { color: theme.textSecondary, marginTop: -Spacing.two }]}>
+              Their budget was {formatMoney(job.budget)}
+            </Text>
+          ) : null}
+        </View>
 
         {quote.message ? (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Your message</Text>
-            <Text selectable style={[styles.body, { color: theme.textSecondary }]}>
-              {quote.message}
+          <View style={{ gap: Spacing.two }}>
+            <Text style={[Type.h3, { color: theme.text }]}>Your note</Text>
+            <Text selectable style={[styles.quote, { color: theme.text }]}>
+              “{quote.message}”
             </Text>
           </View>
         ) : null}
+      </ScrollView>
+    </View>
+  );
+}
 
-        {quote.status === 'approved' && quote.job?.status === 'in_progress' ? (
-          <View style={styles.statusBox}>
-            <Text style={[styles.approved, { color: theme.success }]}>
-              🎉 Quote Approved & Escrow Funded! You&apos;ve been hired for this job.
-            </Text>
-            <Link href={routes.providerJobDetail(quote.job_id)} asChild>
-              <Button title="Go to active job" icon="briefcase" style={{ marginTop: Spacing.two }} />
-            </Link>
-          </View>
-        ) : quote.status === 'approved' ? (
-          <View style={[styles.pendingCard, { backgroundColor: theme.tint + '14', borderColor: theme.tint + '33' }]}>
-            <Text style={[styles.pendingTitle, { color: theme.tint }]}>
-              ⏳ Quote Approved — Awaiting Escrow Payment
-            </Text>
-            <Text style={[styles.pendingBody, { color: theme.textSecondary }]}>
-              The customer selected your quote! Work officially begins as soon as their escrow payment is confirmed.
-            </Text>
-          </View>
-        ) : quote.job && (quote.job.status === 'posted' || quote.job.status === 'hiring') ? (
-          <Link href={routes.applyToJob(quote.job_id)} asChild>
-            <Button title="Update quote" variant="secondary" icon="pencil" />
-          </Link>
-        ) : null}
-      </Screen>
-    </>
+function Lines({ title, items, total }: { title: string; items: QuoteLineItem[]; total: number }) {
+  const theme = useTheme();
+  return (
+    <View>
+      <View style={styles.lineHead}>
+        <Text style={[Type.h3, { color: theme.text }]}>{title}</Text>
+        <Text style={[Type.bodyMedium, styles.num, { color: theme.text }]}>{formatMoney(total)}</Text>
+      </View>
+      {items.map((item, i) => (
+        <View key={i} style={[styles.line, { borderBottomColor: theme.border }]}>
+          <Text style={[Type.body, { color: theme.textSecondary, flex: 1 }]}>{item.label}</Text>
+          <Text style={[Type.body, styles.num, { color: theme.textSecondary }]}>{formatMoney(item.amount)}</Text>
+        </View>
+      ))}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  content: { gap: Spacing.four, paddingTop: Spacing.three },
-  header: { gap: Spacing.two },
-  title: { fontSize: 24, fontWeight: '700' },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, flexWrap: 'wrap' },
-  meta: { fontSize: 14 },
-  line: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: Spacing.one + 2 },
-  lineLabel: { fontSize: 15 },
-  divider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.two },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  totalLabel: { fontSize: 16, fontWeight: '700' },
-  section: { gap: Spacing.two },
-  sectionTitle: { fontSize: 18, fontWeight: '600' },
-  body: { fontSize: 16, lineHeight: 24 },
-  approved: { fontSize: 16, fontWeight: '600', textAlign: 'center' },
-  statusBox: { gap: Spacing.two, alignItems: 'center' },
-  pendingCard: {
-    padding: Spacing.three,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    gap: Spacing.one,
+  toolbar: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.two },
+  content: { paddingHorizontal: Layout.gutter, paddingTop: Spacing.two, gap: Spacing.five },
+  panel: { borderRadius: Radius.lg, borderCurve: 'continuous', padding: Spacing.threeHalf, gap: Spacing.two },
+  lineHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: Spacing.one },
+  line: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    paddingVertical: Spacing.twoHalf,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  pendingTitle: { fontSize: 15, fontWeight: '700' },
-  pendingBody: { fontSize: 14, lineHeight: 20 },
+  num: { fontVariant: ['tabular-nums'] },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    paddingTop: Spacing.three,
+    borderTopWidth: 1.5,
+  },
+  total: { fontSize: 22, lineHeight: 28, fontWeight: '600', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
+  quote: { ...Type.serifTitle, fontSize: 17, lineHeight: 24, fontStyle: 'italic' },
 });

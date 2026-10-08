@@ -16,8 +16,11 @@ export const queryKeys = {
      * Mutations should invalidate the `*All` prefixes, which match every segment.
      */
     mine: (segment: UserJobSegment) => ['jobs', 'mine', segment] as const,
+    /** Under the `mineAll` prefix, so every job mutation refreshes the counts too. */
+    mineCount: (segment: UserJobSegment) => ['jobs', 'mine', 'count', segment] as const,
     mineAll: () => ['jobs', 'mine'] as const,
     hired: (segment: ProviderJobSegment) => ['jobs', 'hired', segment] as const,
+    hiredCount: (segment: ProviderJobSegment) => ['jobs', 'hired', 'count', segment] as const,
     hiredAll: () => ['jobs', 'hired'] as const,
     /** `filterKey` comes from serializeFilters — an object here would break caching. */
     discover: (search?: string, filterKey?: string) =>
@@ -31,7 +34,9 @@ export const queryKeys = {
 
   quotes: {
     forJob: (jobId: string) => ['quotes', 'job', jobId] as const,
-    mine: () => ['quotes', 'mine'] as const,
+    /** All of a provider's quotes, or one status group. Every variant shares the `mine` prefix. */
+    mine: (status = 'all') => (status === 'all' ? (['quotes', 'mine'] as const) : (['quotes', 'mine', status] as const)),
+    mineCount: (status = 'all') => ['quotes', 'mine', 'count', status] as const,
   },
 
   wallet: () => ['wallet'] as const,

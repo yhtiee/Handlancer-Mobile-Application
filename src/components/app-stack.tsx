@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router/stack';
 
 import { HeaderClose } from '@/components/ui';
+import { FontFamily } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 /**
@@ -26,11 +27,11 @@ export function AppStack({ children }: { children?: React.ReactNode }) {
         headerStyle: { backgroundColor: theme.background },
         headerShadowVisible: false,
         headerTitleAlign: 'center',
-        headerTitleStyle: { color: theme.text, fontSize: 17, fontWeight: '700' },
-        headerTintColor: theme.tint,
+        // React Navigation renders its own Text, so the family is set here.
+        headerTitleStyle: { color: theme.text, fontSize: 17, fontFamily: FontFamily.text[600] },
+        headerTintColor: theme.text,
         headerLeft: ({ canGoBack }) => (canGoBack ? <HeaderClose /> : undefined),
-        // Let the themed gradient show through the screen body.
-        contentStyle: { backgroundColor: 'transparent' },
+        contentStyle: { backgroundColor: theme.background },
       }}>
       {children}
     </Stack>

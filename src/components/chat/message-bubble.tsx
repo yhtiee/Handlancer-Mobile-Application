@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
 import { Radius, Spacing } from '@/constants/theme';
 import type { Message } from '@/services/database.types';
@@ -17,10 +18,10 @@ export function MessageBubble({ message, mine }: { message: Message; mine: boole
         style={[
           styles.bubble,
           mine
-            ? { backgroundColor: theme.tint, borderBottomRightRadius: Radius.sm }
+            ? { backgroundColor: theme.accent, borderBottomRightRadius: Radius.sm }
             : { backgroundColor: theme.backgroundElement, borderBottomLeftRadius: Radius.sm },
         ]}>
-        <Text selectable style={[styles.body, { color: mine ? theme.tintText : theme.text }]}>
+        <Text selectable style={[styles.body, { color: mine ? theme.background : theme.text }]}>
           {message.body}
         </Text>
       </View>

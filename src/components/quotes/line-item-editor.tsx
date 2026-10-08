@@ -1,144 +1,170 @@
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Icon, type IconName, MoneyText } from '@/components/ui';
-import { Radius, Spacing } from '@/constants/theme';
-import type { QuoteLineItem } from '@/services/database.types';
+import { formatMoney, Icon } from '@/components/ui';
+import { Text, TextInput } from '@/components/ui/text';
+import { Radius, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import type { QuoteLineItem } from '@/services/database.types';
 
+type Kind = QuoteLineItem['type'];
+
+const SECTIONS: { type: Kind; title: string; hint: string; placeholder: string; add: string }[] = [
+  {
+    type: 'labor',
+    title: 'Labour',
+    hint: 'Your work. Paid when the client approves the finished job.',
+    placeholder: 'e.g. Replace the trap and reseal',
+    add: 'Add labour',
+  },
+  {
+    type: 'material',
+    title: 'Materials',
+    hint: 'Parts you buy. Paid to you early, so you can buy them.',
+    placeholder: 'e.g. P-trap and washers',
+    add: 'Add a material',
+  },
+];
+
+/**
+ * A quote as two plain lists — labour, then materials — because that split is
+ * what the escrow pays out on (materials early, labour on approval). Each line
+ * is a description and an amount; nothing to toggle.
+ */
 export function LineItemEditor({
   items,
   onChange,
+  showErrors = false,
 }: {
   items: QuoteLineItem[];
   onChange: (items: QuoteLineItem[]) => void;
+  /** Mark lines that have a description but no amount, or the reverse. */
+  showErrors?: boolean;
 }) {
-  const theme = useTheme();
-  const total = items.reduce((s, i) => s + (i.amount || 0), 0);
-
-  function update(index: number, patch: Partial<QuoteLineItem>) {
+  const update = (index: number, patch: Partial<QuoteLineItem>) =>
     onChange(items.map((it, i) => (i === index ? { ...it, ...patch } : it)));
-  }
-  function remove(index: number) {
-    onChange(items.filter((_, i) => i !== index));
-  }
-  function add(type: QuoteLineItem['type']) {
-    onChange([...items, { label: '', type, amount: 0 }]);
-  }
+  const remove = (index: number) => onChange(items.filter((_, i) => i !== index));
+  const add = (type: Kind) => onChange([...items, { label: '', type, amount: 0 }]);
 
   return (
-    <View style={{ gap: Spacing.two }}>
-      {items.map((item, i) => (
-        <Animated.View
-          key={i}
-          entering={FadeIn}
-          exiting={FadeOut}
-          layout={LinearTransition}
-          style={[styles.row, { backgroundColor: theme.backgroundElement }]}>
-          <Pressable
-            onPress={() => update(i, { type: item.type === 'material' ? 'labor' : 'material' })}
-            style={[styles.typeToggle, { backgroundColor: theme.tint + '22' }]}>
-            <Icon name={item.type === 'material' ? 'cube' : 'hammer'} size={16} color={theme.tint} />
-          </Pressable>
-          <TextInput
-            value={item.label}
-            onChangeText={(t) => update(i, { label: t })}
-            placeholder={item.type === 'material' ? 'Material' : 'Labour'}
-            placeholderTextColor={theme.textSecondary}
-            style={[styles.labelInput, { color: theme.text }]}
-          />
-          <TextInput
-            value={item.amount ? String(item.amount) : ''}
-            onChangeText={(t) => update(i, { amount: Number(t.replace(/[^0-9.]/g, '')) || 0 })}
-            placeholder="0"
-            placeholderTextColor={theme.textSecondary}
-            keyboardType="number-pad"
-            style={[styles.amountInput, { color: theme.text }]}
-          />
-          <Pressable onPress={() => remove(i)} hitSlop={8}>
-            <Icon name="remove-circle" size={22} color={theme.danger} />
-          </Pressable>
-        </Animated.View>
+    <View style={{ gap: Spacing.five }}>
+      {SECTIONS.map((section) => (
+        <Section
+          key={section.type}
+          section={section}
+          lines={items.map((item, index) => ({ item, index })).filter(({ item }) => item.type === section.type)}
+          onUpdate={update}
+          onRemove={remove}
+          onAdd={() => add(section.type)}
+          showErrors={showErrors}
+        />
       ))}
-
-      <View style={styles.addRow}>
-        <AddButton label="Add material" icon="cube" onPress={() => add('material')} />
-        <AddButton label="Add labour" icon="hammer" onPress={() => add('labor')} />
-      </View>
-
-      <View style={[styles.totalRow, { borderTopColor: theme.border }]}>
-        <Text style={[styles.totalLabel, { color: theme.text }]}>Quote total</Text>
-        <MoneyText amount={total} style={{ fontSize: 18 }} />
-      </View>
     </View>
   );
 }
 
-function AddButton({
-  label,
-  icon,
-  onPress,
+function Section({
+  section,
+  lines,
+  onUpdate,
+  onRemove,
+  onAdd,
+  showErrors,
 }: {
-  label: string;
-  icon: IconName;
-  onPress: () => void;
+  section: (typeof SECTIONS)[number];
+  lines: { item: QuoteLineItem; index: number }[];
+  onUpdate: (index: number, patch: Partial<QuoteLineItem>) => void;
+  onRemove: (index: number) => void;
+  onAdd: () => void;
+  showErrors: boolean;
 }) {
   const theme = useTheme();
+  const subtotal = lines.reduce((s, { item }) => s + (item.amount || 0), 0);
+
   return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.addButton, { borderColor: theme.border }]}>
-      <Icon name={icon} size={15} color={theme.tint} />
-      <Text style={[styles.addText, { color: theme.tint }]}>{label}</Text>
-    </Pressable>
+    <View style={{ gap: Spacing.twoHalf }}>
+      <View style={styles.head}>
+        <Text style={[Type.h3, { color: theme.text, flex: 1 }]}>{section.title}</Text>
+        {subtotal > 0 ? (
+          <Text style={[Type.bodyMedium, styles.num, { color: theme.text }]}>{formatMoney(subtotal)}</Text>
+        ) : null}
+      </View>
+      <Text style={[Type.caption, { color: theme.textSecondary, marginTop: -Spacing.one }]}>{section.hint}</Text>
+
+      {lines.map(({ item, index }) => {
+        const incomplete = showErrors && (!item.label.trim() !== !(item.amount > 0));
+        return (
+          <View
+            key={index}
+            style={[
+              styles.line,
+              { backgroundColor: theme.backgroundElement, borderColor: incomplete ? theme.danger : 'transparent' },
+            ]}>
+            <TextInput
+              value={item.label}
+              onChangeText={(t) => onUpdate(index, { label: t })}
+              placeholder={section.placeholder}
+              placeholderTextColor={theme.textSecondary}
+              style={[styles.label, { color: theme.text }]}
+            />
+            <View style={[styles.amount, { borderLeftColor: theme.border }]}>
+              <Text style={[Type.body, { color: theme.textSecondary }]}>₦</Text>
+              <TextInput
+                value={item.amount ? item.amount.toLocaleString() : ''}
+                onChangeText={(t) => onUpdate(index, { amount: Number(t.replace(/[^0-9]/g, '')) || 0 })}
+                placeholder="0"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="number-pad"
+                style={[styles.amountInput, { color: theme.text }]}
+              />
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Remove this line"
+              hitSlop={10}
+              onPress={() => onRemove(index)}
+              style={styles.remove}>
+              <Icon name="close" size={18} color={theme.textSecondary} />
+            </Pressable>
+          </View>
+        );
+      })}
+
+      <Pressable accessibilityRole="button" onPress={onAdd} style={styles.add} hitSlop={6}>
+        <Icon name="add" size={18} color={theme.text} />
+        <Text style={[Type.bodyMedium, { color: theme.text }]}>{section.add}</Text>
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
+  head: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.two },
+  num: { fontVariant: ['tabular-nums'] },
+  line: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
-    padding: Spacing.two,
+    minHeight: 52,
     borderRadius: Radius.md,
     borderCurve: 'continuous',
+    borderWidth: 1.5,
+    paddingLeft: Spacing.three,
   },
-  typeToggle: {
-    width: 34,
-    height: 34,
-    borderRadius: Radius.sm,
+  label: { flex: 1, fontSize: 15, paddingVertical: Spacing.twoHalf },
+  amount: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 2,
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    paddingLeft: Spacing.twoHalf,
+    marginLeft: Spacing.two,
   },
-  labelInput: { flex: 1, fontSize: 15, paddingVertical: Spacing.one },
   amountInput: {
-    width: 80,
+    width: 84,
     fontSize: 15,
     fontWeight: '600',
-    textAlign: 'right',
+    paddingVertical: Spacing.twoHalf,
     fontVariant: ['tabular-nums'],
   },
-  addRow: { flexDirection: 'row', gap: Spacing.two },
-  addButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.one,
-    paddingVertical: Spacing.two,
-    borderRadius: Radius.md,
-    borderCurve: 'continuous',
-    borderWidth: 1,
-    borderStyle: 'dashed',
-  },
-  addText: { fontSize: 14, fontWeight: '600' },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: Spacing.three,
-    marginTop: Spacing.one,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  totalLabel: { fontSize: 16, fontWeight: '700' },
+  remove: { width: 40, height: 52, alignItems: 'center', justifyContent: 'center' },
+  add: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one + 2, alignSelf: 'flex-start', paddingVertical: Spacing.one },
 });

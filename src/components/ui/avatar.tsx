@@ -1,6 +1,8 @@
 import { Image } from 'expo-image';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
+import { FontFamily } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type AvatarProps = {
@@ -34,8 +36,8 @@ export function Avatar({ uri, name, size = 44 }: AvatarProps) {
 
   return (
     <View
-      style={[dims, styles.fallback, { backgroundColor: theme.backgroundSelected }]}>
-      <Text style={[styles.initials, { color: theme.text, fontSize: size * 0.38 }]}>
+      style={[dims, styles.fallback, { backgroundColor: '#1E3A5F' }]}>
+      <Text style={[styles.initials, { color: '#FBFCFD', fontSize: size * 0.36 }]}>
         {initials}
       </Text>
     </View>
@@ -44,5 +46,5 @@ export function Avatar({ uri, name, size = 44 }: AvatarProps) {
 
 const styles = StyleSheet.create({
   fallback: { alignItems: 'center', justifyContent: 'center' },
-  initials: { fontWeight: '600' },
+  initials: { fontFamily: FontFamily.displayItalic[500] },
 });

@@ -9,7 +9,7 @@ export function ListFooter({ loading }: { loading: boolean }) {
   if (!loading) return null;
   return (
     <View style={{ paddingVertical: Spacing.four }}>
-      <ActivityIndicator color={theme.tint} />
+      <ActivityIndicator color={theme.text} />
     </View>
   );
 }

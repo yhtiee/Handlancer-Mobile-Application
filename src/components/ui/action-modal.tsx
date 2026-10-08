@@ -1,4 +1,5 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 import Animated, { FadeIn, FadeInDown, ZoomIn } from 'react-native-reanimated';
 
 import { Button } from '@/components/ui/button';
@@ -48,10 +49,10 @@ function Sheet({
 function toneColor(tone: Tone, theme: ReturnType<typeof useTheme>) {
   if (tone === 'danger') return theme.danger;
   if (tone === 'success') return theme.success;
-  return theme.tint;
+  return theme.text;
 }
 
-/** Circular icon badge with a soft halo in the tone colour. */
+/** Circular icon badge: the tone lives in the glyph, on a neutral disc. */
 function Badge({ icon, tone, big }: { icon: IconName; tone: Tone; big?: boolean }) {
   const theme = useTheme();
   const color = toneColor(tone, theme);
@@ -65,8 +66,8 @@ function Badge({ icon, tone, big }: { icon: IconName; tone: Tone; big?: boolean 
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: color + '1F',
-          borderColor: color + '33',
+          backgroundColor: theme.backgroundElement,
+          borderColor: 'transparent',
         },
       ]}>
       <Icon name={icon} size={big ? 36 : 26} color={color} />

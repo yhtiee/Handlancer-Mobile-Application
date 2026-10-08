@@ -1,15 +1,7 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@/components/ui/text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
@@ -27,13 +19,19 @@ export default function PostJob() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const createJob = useCreateJob();
-  const { provider } = useLocalSearchParams<{ provider?: string }>();
+  const { provider, category: presetCategory } = useLocalSearchParams<{
+    provider?: string;
+    /** Set when the job was started from a trade on the home screen. */
+    category?: string;
+  }>();
   const isDirect = !!provider;
   const { session } = useAuth();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<CategoryId | null>(null);
+  const [category, setCategory] = useState<CategoryId | null>(
+    Categories.some((c) => c.id === presetCategory) ? (presetCategory as CategoryId) : null,
+  );
   const [budget, setBudget] = useState('');
   const [location, setLocation] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -226,8 +224,8 @@ export default function PostJob() {
                 },
               ]}
             >
-              <Icon name="camera-outline" size={20} color={theme.tint} />
-              <Text style={[styles.addText, { color: theme.tint }]}>Add</Text>
+              <Icon name="camera-outline" size={20} color={theme.text} />
+              <Text style={[styles.addText, { color: theme.text }]}>Add</Text>
             </Pressable>
           </View>
           <Text style={[styles.tipText, { color: theme.textSecondary }]}>

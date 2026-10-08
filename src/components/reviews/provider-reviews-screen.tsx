@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { Avatar, Card, EmptyState, GlobalLoader, RatingStars, ScreenView } from '@/components/ui';

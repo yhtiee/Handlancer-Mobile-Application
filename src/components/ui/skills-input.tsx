@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@/components/ui/text';
 
 import { Icon } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
@@ -66,14 +67,14 @@ export function SkillsInput({
               key={`${skill}-${index}`}
               style={[
                 styles.skillChip,
-                { backgroundColor: theme.tint + '1F', borderColor: theme.tint + '40' },
+                { backgroundColor: theme.backgroundElement, borderColor: theme.border },
               ]}>
-              <Text style={[styles.skillChipText, { color: theme.tint }]}>{skill}</Text>
+              <Text style={[styles.skillChipText, { color: theme.text }]}>{skill}</Text>
               <Pressable
                 hitSlop={6}
                 onPress={() => removeSkill(index)}
                 style={styles.removeBtn}>
-                <Icon name="close" size={13} color={theme.tint} />
+                <Icon name="close" size={13} color={theme.text} />
               </Pressable>
             </View>
           ))}
@@ -86,7 +87,7 @@ export function SkillsInput({
           styles.inputRow,
           {
             backgroundColor: theme.backgroundElement,
-            borderColor: focused ? theme.tint : theme.border,
+            borderColor: focused ? theme.text : theme.border,
           },
         ]}>
         <TextInput
@@ -106,15 +107,15 @@ export function SkillsInput({
           style={({ pressed }) => [
             styles.addBtn,
             {
-              backgroundColor: inputText.trim() ? theme.tint : theme.border,
+              backgroundColor: inputText.trim() ? theme.text : theme.border,
               opacity: pressed || !inputText.trim() ? 0.7 : 1,
             },
           ]}>
-          <Icon name="add" size={16} color={inputText.trim() ? theme.tintText : theme.textSecondary} />
+          <Icon name="add" size={16} color={inputText.trim() ? theme.background : theme.textSecondary} />
           <Text
             style={[
               styles.addBtnText,
-              { color: inputText.trim() ? theme.tintText : theme.textSecondary },
+              { color: inputText.trim() ? theme.background : theme.textSecondary },
             ]}>
             Add
           </Text>

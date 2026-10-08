@@ -1,49 +1,27 @@
 import { Image } from 'expo-image';
-import { useRouter, type Href } from 'expo-router';
-import { useEffect, useState } from 'react';
-import {
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { StatusBar } from 'expo-status-bar';
+import { type Href, useRouter } from 'expo-router';
+import { useEffect } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, GlobalLoader, ScreenView } from '@/components/ui';
-import { Radius, Spacing } from '@/constants/theme';
+import { Button, GlobalLoader } from '@/components/ui';
+import { PhotoScrims } from '@/components/ui/photo-header';
+import { Text } from '@/components/ui/text';
+import { Layout, Scrim, Spacing, Type, TypeItalic } from '@/constants/theme';
 import { routes } from '@/lib/routes';
 import { useAuth } from '@/providers/auth-provider';
-import { useTheme } from '@/hooks/use-theme';
 
-const SLIDES = [
-  {
-    image: require('@/assets/images/working-man.png'),
-    title: 'Browse Local Services',
-    subtitle: 'Discover trusted artisans near you and explore the work they do.',
-  },
-  {
-    image: require('@/assets/images/working-woman.png'),
-    title: 'Hire With Confidence',
-    subtitle: 'Your payment stays safe in escrow until the job is done right.',
-  },
-  // {
-  //   image: require('@/assets/images/welcome.png'),
-  //   title: 'Get Work Done',
-  //   subtitle: 'Post a job, compare quotes, and book the right pro in minutes.',
-  // },
-];
+const PHOTO = require('@/assets/images/providers/tailor.png');
 
+/**
+ * One screen, one choice. A tradesperson at work, the promise in a sentence,
+ * and the two ways in — the choice is carried through sign-in to role select.
+ */
 export default function Welcome() {
-  const theme = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
   const { loading, session, profile } = useAuth();
-  const [index, setIndex] = useState(0);
 
   // Session check: if already signed in, skip onboarding and go to the app.
   useEffect(() => {
@@ -60,92 +38,65 @@ export default function Welcome() {
   // user is being redirected away from onboarding.
   const showLoader = loading || !!session;
 
-  const onScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) =>
-    setIndex(Math.round(e.nativeEvent.contentOffset.x / width));
-
   return (
-    <ScreenView>
-      <ScrollView
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={onScrollEnd}
-        style={styles.carousel}
-        contentContainerStyle={{ flexGrow: 1 }}>
-        {SLIDES.map((slide, i) => (
-          <View key={i} style={[styles.slide, { width }]}>
-            <View style={styles.heroWrap}>
-              <Image source={slide.image} style={styles.heroImage} contentFit="cover" />
-            </View>
+    <View style={styles.root}>
+      <StatusBar style="light" />
+      <Image source={PHOTO} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="top" />
+      <PhotoScrims top={220} bottom="70%" strength={0.94} />
 
-            <Text style={[styles.title, { color: theme.text }]}>{slide.title}</Text>
-            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{slide.subtitle}</Text>
-          </View>
-        ))}
-      </ScrollView>
+      <Text style={[styles.word, { top: insets.top + Spacing.two }]}>Handlancer</Text>
 
-      {/* Pagination dots */}
-      <View style={styles.dots}>
-        {SLIDES.map((_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.dot,
-              {
-                width: i === index ? 20 : 7,
-                backgroundColor: i === index ? theme.tint : theme.border,
-              },
-            ]}
-          />
-        ))}
-      </View>
-
-      <Animated.View
-        entering={FadeInDown.delay(150)}
-        style={[styles.actions, { paddingBottom: insets.bottom + Spacing.three }]}>
-        <Button title="Get Started" size="lg" onPress={() => router.push('/(auth)/sign-in')} />
-        <Text style={[styles.legal, { color: theme.textSecondary }]}>
-          By continuing you agree to our Terms & Privacy Policy.
+      <View style={[styles.over, { paddingBottom: insets.bottom + Spacing.three }]}>
+        <Text style={[Type.serif, styles.white]}>
+          Hire someone good. <Text style={TypeItalic}>Pay when it’s done.</Text>
         </Text>
-      </Animated.View>
+        <Text style={[Type.body, styles.sub]}>
+          Your money waits in escrow until you approve the work.
+        </Text>
+        <View style={styles.buttons}>
+          <Button
+            title="I need something done"
+            size="lg"
+            onPress={() => router.push('/(auth)/sign-in?role=user' as Href)}
+            labelColor="#06201D"
+            style={{ backgroundColor: '#2FD0BE' }}
+          />
+          <Button
+            title="I do the work"
+            size="lg"
+            variant="secondary"
+            labelColor="#FFFFFF"
+            onPress={() => router.push('/(auth)/sign-in?role=provider' as Href)}
+            style={styles.glass}
+          />
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/(auth)/sign-in' as Href)}
+          style={styles.signin}>
+          <Text style={[Type.callout, { color: 'rgba(255,255,255,0.8)' }]}>
+            Have an account? <Text style={[Type.bodyMedium, styles.white]}>Sign in</Text>
+          </Text>
+        </Pressable>
+      </View>
 
       {/* Transparent session-check loader over the onboarding content. */}
       <GlobalLoader backgroundColor="transparent" visible={showLoader} />
-    </ScreenView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  carousel: { flex: 1 },
-  slide: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
+  root: { flex: 1, backgroundColor: '#0A1220' },
+  word: { position: 'absolute', left: Layout.gutter, ...Type.serifTitle, color: '#FFFFFF' },
+  over: { position: 'absolute', left: Layout.gutter, right: Layout.gutter, bottom: 0 },
+  white: { color: '#FFFFFF' },
+  sub: { color: 'rgba(255,255,255,0.86)', marginTop: Spacing.twoHalf },
+  buttons: { gap: Spacing.twoHalf, marginTop: Spacing.five - 4 },
+  glass: {
+    backgroundColor: `rgba(${Scrim},0.6)`,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.18)',
   },
-  heroWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  heroImage: { width: '100%', height: "100%" },
-  title: {
-    fontSize: 26,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginTop: Spacing.four,
-  },
-  subtitle: {
-    fontSize: 15,
-    lineHeight: 22,
-    textAlign: 'center',
-    marginTop: Spacing.two,
-    alignSelf: 'center',
-    maxWidth: 320,
-  },
-  dots: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.one,
-    paddingVertical: Spacing.three,
-  },
-  dot: { height: 7, borderRadius: Radius.pill },
-  actions: { gap: Spacing.three, paddingHorizontal: Spacing.four },
-  legal: { fontSize: 12, textAlign: 'center' },
+  signin: { height: 44, alignItems: 'center', justifyContent: 'center', marginTop: Spacing.two },
 });

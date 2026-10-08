@@ -2,7 +2,8 @@ import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
 import * as MailComposer from 'expo-mail-composer';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { Button, Icon } from '@/components/ui';
@@ -93,7 +94,7 @@ export function ProviderDisputeBanner({ job }: { job: JobWithOwner }) {
 
       {dispute?.category ? (
         <View style={[styles.row, { backgroundColor: theme.backgroundElement }]}>
-          <Text style={[Type.caption, { color: theme.textSecondary }]}>RAISED AS</Text>
+          <Text style={[Type.caption, { color: theme.textSecondary }]}>Raised as</Text>
           <Text style={[Type.bodyMedium, { color: theme.text }]}>
             {categoryLabel(dispute.category as DisputeCategory)}
           </Text>
@@ -102,7 +103,7 @@ export function ProviderDisputeBanner({ job }: { job: JobWithOwner }) {
 
       {dispute?.reason ? (
         <View style={[styles.row, { backgroundColor: theme.backgroundElement }]}>
-          <Text style={[Type.caption, { color: theme.textSecondary }]}>WHAT THE CLIENT SAID</Text>
+          <Text style={[Type.caption, { color: theme.textSecondary }]}>What the client said</Text>
           <Text selectable style={[Type.body, { color: theme.text }]}>
             {dispute.reason}
           </Text>
@@ -118,8 +119,8 @@ export function ProviderDisputeBanner({ job }: { job: JobWithOwner }) {
         <Button title="Respond by email" icon="mail" onPress={email} />
         <Button title="Respond on WhatsApp" variant="secondary" icon="logo-whatsapp" onPress={whatsapp} />
         <Pressable onPress={copy} hitSlop={8} style={styles.copy}>
-          <Icon name="copy" size={14} color={theme.tint} />
-          <Text style={[Type.callout, { color: theme.tint }]}>Copy my response</Text>
+          <Icon name="copy" size={14} color={theme.text} />
+          <Text style={[Type.callout, { color: theme.text }]}>Copy my response</Text>
         </Pressable>
       </View>
 

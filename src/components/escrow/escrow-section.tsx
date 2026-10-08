@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
-import { Button, ConfirmModal, MoneyText, SuccessModal } from '@/components/ui';
+import { Button, ConfirmModal, formatMoney, MoneyText, SuccessModal } from '@/components/ui';
 import { PinConfirmModal } from '@/components/wallet/pin-confirm-modal';
 import { Spacing, Type } from '@/constants/theme';
 import { routes } from '@/lib/routes';
@@ -79,30 +80,23 @@ export function EscrowSection({ job }: { job: Job }) {
       {!funded && approved ? (
         <>
           <Button
-            title="Fund escrow & hire"
+            title={`Pay ${formatMoney(approved.total)} into escrow`}
             size="lg"
-            icon="lock-closed"
             onPress={() => setConfirming('fund')}
           />
-          <Text style={[Type.caption, { color: theme.textSecondary }]}>
-            The provider is only hired once the money is held.
+          <Text style={[Type.caption, styles.note, { color: theme.textSecondary }]}>
+            The provider is hired once the money is held.
           </Text>
         </>
       ) : null}
 
       {materialsDue ? (
         <>
-          {escrow!.materials_requested_at ? (
-            <View style={[styles.request, { backgroundColor: theme.tint + '14' }]}>
-              <Text style={[Type.callout, { color: theme.tint }]}>
-                The provider has requested the materials funds.
-              </Text>
-            </View>
-          ) : null}
+          {/* Teal once the provider has asked: that is the moment it is holding up work. */}
           <Button
-            title="Release materials funds"
-            variant="secondary"
-            icon="cube"
+            title={`Release ${formatMoney(escrow!.materials_amount)} for materials`}
+            variant={escrow!.materials_requested_at ? 'primary' : 'secondary'}
+            size="lg"
             onPress={() => setConfirming('materials')}
           />
         </>
@@ -110,19 +104,12 @@ export function EscrowSection({ job }: { job: Job }) {
 
       {finalDue ? (
         <>
-          {escrow!.completion_requested_at ? (
-            <View style={[styles.request, { backgroundColor: theme.tint + '14' }]}>
-              <Text style={[Type.callout, { color: theme.tint }]}>
-                The provider marked the work complete and is waiting for your review.
-              </Text>
-            </View>
-          ) : null}
           {/* Rating and payout are one transaction, so this opens the review screen
               rather than releasing from here. */}
           <Button
-            title="Review & release final payment"
+            title={escrow!.completion_requested_at ? 'Check the work and pay' : 'Approve the work and pay'}
+            variant={escrow!.completion_requested_at ? 'primary' : 'secondary'}
             size="lg"
-            icon="checkmark-circle"
             onPress={() => router.push(routes.reviewJob(job.id))}
           />
         </>
@@ -133,9 +120,9 @@ export function EscrowSection({ job }: { job: Job }) {
         onCancel={() => setConfirming(null)}
         onConfirm={confirmFund}
         icon="lock-closed"
-        title="Fund escrow & hire"
+        title="Pay into escrow"
         message="This moves money from your wallet into escrow. It is held safely and only released when you approve the work."
-        confirmLabel="Pay & hire"
+        confirmLabel="Pay and hire"
         loading={busy}
         error={error}
         details={[
@@ -186,9 +173,5 @@ export function EscrowSection({ job }: { job: Job }) {
 
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.two },
-  request: {
-    padding: Spacing.twoHalf,
-    borderRadius: 12,
-    borderCurve: 'continuous',
-  },
+  note: { textAlign: 'center' },
 });

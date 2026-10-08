@@ -2,7 +2,8 @@ import * as Linking from 'expo-linking';
 import * as MailComposer from 'expo-mail-composer';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
 import { Button, Card, Screen } from '@/components/ui';
 import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_DISPLAY, whatsappUrl } from '@/constants/support';
@@ -40,7 +41,7 @@ export function SupportScreen() {
     }
     await MailComposer.composeAsync({
       recipients: [SUPPORT_EMAIL],
-      subject: 'HandLancer support request',
+      subject: 'Handlancer support request',
       // Asking for these up front saves the first reply being a request for them.
       body: '\n\n—\nSo we can help faster, please include:\n• What you were trying to do\n• The job title, if it is about a job\n• Screenshots, if you have them\n',
     });
@@ -49,7 +50,7 @@ export function SupportScreen() {
   async function whatsapp() {
     setStatus(null);
     try {
-      await Linking.openURL(whatsappUrl('Hello HandLancer support, I need help with '));
+      await Linking.openURL(whatsappUrl('Hello Handlancer support, I need help with '));
     } catch {
       setStatus(`Could not open WhatsApp. Message us on ${SUPPORT_WHATSAPP_DISPLAY}.`);
     }

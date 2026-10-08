@@ -1,14 +1,7 @@
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Card, formatMoney, Icon, Input, SuccessModal } from '@/components/ui';
@@ -140,7 +133,7 @@ export function WithdrawForm() {
                   {security?.bankName} · {security?.accountMasked}
                 </Text>
                 <Pressable onPress={() => router.push(routes.walletBank(shell))} hitSlop={6}>
-                  <Text style={[Type.caption, { color: theme.tint, marginTop: Spacing.two }]}>
+                  <Text style={[Type.caption, { color: theme.text, marginTop: Spacing.two }]}>
                     Change account
                   </Text>
                 </Pressable>
@@ -246,7 +239,7 @@ function SetupRow({
       <Icon
         name={done ? 'checkmark-circle' : icon}
         size={20}
-        color={done ? theme.success : theme.tint}
+        color={done ? theme.success : theme.text }
       />
       <View style={{ flex: 1 }}>
         <Text style={[Type.bodyMedium, { color: theme.text }]}>{title}</Text>

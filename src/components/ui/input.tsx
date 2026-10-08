@@ -1,5 +1,6 @@
 import { forwardRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, type TextInputProps, View } from 'react-native';
+import { Pressable, StyleSheet, type TextInput as RNTextInput, type TextInputProps, View } from 'react-native';
+import { Text, TextInput } from '@/components/ui/text';
 
 import { Icon } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
@@ -10,7 +11,7 @@ export type InputProps = TextInputProps & {
   error?: string | null;
 };
 
-export const Input = forwardRef<TextInput, InputProps>(function Input(
+export const Input = forwardRef<RNTextInput, InputProps>(function Input(
   { label, error, style, onFocus, onBlur, secureTextEntry, ...rest },
   ref,
 ) {
@@ -19,7 +20,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
   const [hidden, setHidden] = useState(true);
 
   const isPassword = !!secureTextEntry;
-  const borderColor = error ? theme.danger : focused ? theme.tint : theme.border;
+  const borderColor = error ? theme.danger : focused ? theme.text : 'transparent';
 
   return (
     <View style={styles.wrap}>
@@ -80,8 +81,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     borderRadius: Radius.md,
     borderCurve: 'continuous',
-    borderWidth: 1,
-    fontSize: 16,
+    borderWidth: 1.5,
+    fontSize: 17,
   },
   inputWithToggle: { paddingRight: 48 },
   toggle: {

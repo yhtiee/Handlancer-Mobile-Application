@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@/components/ui/text';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { Button, Icon, type IconName } from '@/components/ui';
@@ -91,9 +92,9 @@ export function PinConfirmModal({
             <View
               style={[
                 styles.badge,
-                { backgroundColor: theme.tint + '1F', borderColor: theme.tint + '33' },
+                { backgroundColor: theme.backgroundElement, borderColor: theme.border },
               ]}>
-              <Icon name={icon} size={26} color={theme.tint} />
+              <Icon name={icon} size={26} color={theme.text} />
             </View>
             <Text style={[Type.h3, styles.centered, { color: theme.text }]}>{title}</Text>
             {message ? (

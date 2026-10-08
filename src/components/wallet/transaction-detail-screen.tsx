@@ -1,7 +1,8 @@
 import * as Clipboard from 'expo-clipboard';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
 import {
   Avatar,
@@ -30,7 +31,7 @@ const META: Record<TxnType, { label: string; icon: IconName; credit: boolean; bl
     label: 'Wallet top-up',
     icon: 'arrow-down-circle',
     credit: true,
-    blurb: 'Money you added to your HandLancer wallet.',
+    blurb: 'Money you added to your Handlancer wallet.',
   },
   withdraw: {
     label: 'Withdrawal',
@@ -163,8 +164,8 @@ export function TransactionDetailScreen({ shell }: { shell: 'user' | 'provider' 
                 styles.linkRow,
                 { backgroundColor: pressed ? theme.backgroundSelected : 'transparent' },
               ]}>
-              <View style={[styles.smallIcon, { backgroundColor: theme.tint + '1F' }]}>
-                <Icon name="briefcase" size={18} color={theme.tint} />
+              <View style={[styles.smallIcon, { backgroundColor: theme.backgroundElement }]}>
+                <Icon name="briefcase" size={18} color={theme.text} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[Type.caption, { color: theme.textSecondary }]}>JOB</Text>
@@ -182,7 +183,7 @@ export function TransactionDetailScreen({ shell }: { shell: 'user' | 'provider' 
                   <Avatar uri={txn.counterparty.avatar_url} name={txn.counterparty.name} size={36} />
                   <View style={{ flex: 1 }}>
                     <Text style={[Type.caption, { color: theme.textSecondary }]}>
-                      {shell === 'provider' ? 'CUSTOMER' : 'PROVIDER'}
+                      {shell === 'provider' ? 'Customer' : 'Provider'}
                     </Text>
                     <Text numberOfLines={1} style={[Type.bodyMedium, { color: theme.text }]}>
                       {txn.counterparty.name ?? 'Unnamed'}
@@ -196,7 +197,7 @@ export function TransactionDetailScreen({ shell }: { shell: 'user' | 'provider' 
 
         {/* The bit support will ask for. */}
         <Card>
-          <Text style={[Type.caption, { color: theme.textSecondary }]}>REFERENCE</Text>
+          <Text style={[Type.caption, { color: theme.textSecondary }]}>Reference</Text>
           <Text selectable style={[Type.body, styles.reference, { color: theme.text }]}>
             {txn.reference ?? txn.id}
           </Text>

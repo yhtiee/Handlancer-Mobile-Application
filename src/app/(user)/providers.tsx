@@ -1,40 +1,76 @@
-import { Stack } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
+import { FlatList, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ProviderCard } from '@/components/providers/provider-card';
 import { ProviderFilterSheet } from '@/components/providers/provider-filter-sheet';
-import {
-  Button,
-  EmptyState,
-  Icon,
-  ListFooter,
-  ListSkeleton,
-  ScreenView,
-  SearchField,
-} from '@/components/ui';
-import { Categories, categoryLabel } from '@/constants/categories';
-import { Layout, Radius, Spacing, Type } from '@/constants/theme';
+import { ProviderResult } from '@/components/providers/provider-result';
+import { TradeSheet } from '@/components/providers/trade-sheet';
+import { Button, EmptyState, GlassButton, ListFooter, ListSkeleton, ScreenView, SearchField } from '@/components/ui';
+import { Text } from '@/components/ui/text';
+import { Categories } from '@/constants/categories';
+import { Layout, Spacing, Type, TypeItalic } from '@/constants/theme';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { useContentInset } from '@/hooks/use-insets';
+import { useInfiniteList } from '@/hooks/use-infinite-list';
+import { useTheme } from '@/hooks/use-theme';
 import {
   countActiveProviderFilters,
   emptyProviderFilters,
-  PROVIDER_SORT_LABELS,
   type ProviderFilters,
+  type ProviderSort,
 } from '@/lib/provider-filters';
+import { routes } from '@/lib/routes';
+import { useAuth } from '@/providers/auth-provider';
 import { useProviders, useProvidersCount } from '@/queries/use-providers';
-import { useContentInset } from '@/hooks/use-insets';
-import { useDebouncedValue } from '@/hooks/use-debounced-value';
-import { useInfiniteList } from '@/hooks/use-infinite-list';
-import { useTheme } from '@/hooks/use-theme';
 
+/** What to call the people who do each trade, for the sentence. */
+const PEOPLE: Record<string, string> = {
+  plumbing: 'plumbers',
+  electrical: 'electricians',
+  carpentry: 'carpenters',
+  painting: 'painters',
+  cleaning: 'cleaners',
+  appliance: 'appliance repairers',
+  masonry: 'masons',
+  ac: 'AC technicians',
+  auto: 'mechanics',
+  gardening: 'gardeners',
+  moving: 'movers',
+  other: 'other trades',
+};
+
+const SORTS: { value: ProviderSort; label: string }[] = [
+  { value: 'rating', label: 'top rated first' },
+  { value: 'experience', label: 'most experienced first' },
+  { value: 'rate_low', label: 'cheapest first' },
+  { value: 'newest', label: 'newest first' },
+];
+
+const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/**
+ * Browse providers. The filters are a sentence — "Plumbers near Yaba, top
+ * rated first" — and each underlined phrase is the control that changes it,
+ * so what you are looking at and how to change it are the same words. The
+ * results are portraits with the few facts that decide a shortlist.
+ */
 export default function ProvidersList() {
   const theme = useTheme();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const bottomInset = useContentInset();
+  const { profile } = useAuth();
+  const { service } = useLocalSearchParams<{ service?: string }>();
 
   const [search, setSearch] = useState('');
-  const [filters, setFilters] = useState<ProviderFilters>(emptyProviderFilters);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [filters, setFilters] = useState<ProviderFilters>(() => ({
+    ...emptyProviderFilters,
+    services: service && Categories.some((c) => c.id === service) ? [service] : [],
+  }));
+  const [tradesOpen, setTradesOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   // The field stays instant; the query only sees what the user settled on.
   const debouncedSearch = useDebouncedValue(search);
@@ -42,137 +78,99 @@ export default function ProvidersList() {
   const { items: providers, onEndReached, loadingMore } = useInfiniteList(query);
   const { data: total } = useProvidersCount(debouncedSearch, filters);
 
+  const myArea = profile?.location?.split(',')[0]?.trim();
+  const area = filters.location.trim();
   const active = countActiveProviderFilters(filters);
+  // "More filters" counts only what the sentence doesn't already say.
+  const extra =
+    active - (filters.services.length ? 1 : 0) - (area ? 1 : 0) - (filters.availableOnly ? 1 : 0);
   const narrowed = active > 0 || Boolean(debouncedSearch);
 
-  function toggleService(id: string) {
-    setFilters((f) => ({
-      ...f,
-      services: f.services.includes(id)
-        ? f.services.filter((s) => s !== id)
-        : [...f.services, id],
-    }));
+  const who =
+    filters.services.length === 0
+      ? 'Anyone'
+      : filters.services.length === 1
+        ? capitalise(PEOPLE[filters.services[0]] ?? 'providers')
+        : filters.services.length === 2
+          ? capitalise(`${PEOPLE[filters.services[0]]} and ${PEOPLE[filters.services[1]]}`)
+          : `${filters.services.length} trades`;
+  const sort = SORTS.find((s) => s.value === filters.sort) ?? SORTS[0];
+
+  function cycleArea() {
+    if (area) setFilters((f) => ({ ...f, location: '' }));
+    else if (myArea) setFilters((f) => ({ ...f, location: myArea }));
+    else setMoreOpen(true);
   }
 
-  const chips = describeActive(filters);
+  const header = (
+    <View style={styles.header}>
+      <Text style={[styles.sentence, { color: theme.text }]}>
+        <Token onPress={() => setTradesOpen(true)}>{who}</Token>
+        {area ? ' near ' : ', '}
+        <Token onPress={cycleArea}>{area || 'anywhere'}</Token>
+      </Text>
+
+      <Text style={[Type.body, styles.meta, { color: theme.textSecondary }]}>
+        {total == null ? 'Looking' : `${total} found`}
+        {' · '}
+        <Token
+          small
+          onPress={() =>
+            setFilters((f) => ({
+              ...f,
+              sort: SORTS[(SORTS.findIndex((s) => s.value === f.sort) + 1) % SORTS.length].value,
+            }))
+          }>
+          {sort.label}
+        </Token>
+        {' · '}
+        <Token small onPress={() => setFilters((f) => ({ ...f, availableOnly: !f.availableOnly }))}>
+          {filters.availableOnly ? 'available now' : 'available or not'}
+        </Token>
+        {' · '}
+        <Token small onPress={() => setMoreOpen(true)}>
+          {extra > 0 ? `${extra} more ${extra === 1 ? 'filter' : 'filters'}` : 'more filters'}
+        </Token>
+      </Text>
+
+      {searching ? (
+        <SearchField value={search} onChangeText={setSearch} placeholder="A name, a skill or an area" />
+      ) : null}
+    </View>
+  );
 
   return (
     <ScreenView>
-      <Stack.Screen options={{ title: 'Browse Providers', headerShown: true }} />
-
-      <View style={styles.controls}>
-        <SearchField
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search by name, skill, or area..."
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={[styles.toolbar, { paddingTop: insets.top + Spacing.one }]}>
+        <GlassButton
+          icon="chevron-back"
+          accessibilityLabel="Back"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace(routes.userHome))}
         />
-
-        <View style={styles.row}>
-          {/* Pinned so it stays reachable however far the trades scroll. */}
-          <Pressable
-            onPress={() => setSheetOpen(true)}
-            style={({ pressed }) => [
-              styles.filterBtn,
-              {
-                backgroundColor: active ? theme.tint : theme.backgroundElement,
-                borderColor: active ? theme.tint : theme.border,
-                opacity: pressed ? 0.85 : 1,
-              },
-            ]}>
-            <Icon name="options" size={16} color={active ? theme.tintText : theme.text} />
-            <Text style={[Type.callout, { color: active ? theme.tintText : theme.text }]}>
-              Filters
-            </Text>
-            {active ? (
-              <View style={[styles.badge, { backgroundColor: theme.tintText }]}>
-                <Text style={[Type.micro, { color: theme.tint }]}>{active}</Text>
-              </View>
-            ) : null}
-          </Pressable>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.trades}>
-            {Categories.map((c) => {
-              const selected = filters.services.includes(c.id);
-              return (
-                <Pressable
-                  key={c.id}
-                  onPress={() => toggleService(c.id)}
-                  style={({ pressed }) => [
-                    styles.trade,
-                    {
-                      backgroundColor: selected ? theme.tint + '1F' : theme.backgroundElement,
-                      borderColor: selected ? theme.tint : 'transparent',
-                      opacity: pressed ? 0.8 : 1,
-                    },
-                  ]}>
-                  <Icon
-                    name={c.icon}
-                    size={14}
-                    color={selected ? theme.tint : theme.textSecondary}
-                  />
-                  <Text
-                    style={[Type.callout, { color: selected ? theme.tint : theme.textSecondary }]}>
-                    {c.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {chips.length ? (
-          <Animated.View entering={FadeIn} layout={LinearTransition} style={styles.activeRow}>
-            {chips.map((chip) => (
-              <Pressable
-                key={chip.key}
-                onPress={() => setFilters((f) => ({ ...f, ...chip.clear }))}
-                style={[styles.activeChip, { backgroundColor: theme.tint + '14' }]}>
-                <Text style={[Type.caption, { color: theme.tint }]}>{chip.label}</Text>
-                <Icon name="close" size={12} color={theme.tint} />
-              </Pressable>
-            ))}
-            <Pressable onPress={() => setFilters(emptyProviderFilters)} style={styles.clearAll}>
-              <Text style={[Type.caption, { color: theme.textSecondary }]}>Clear all</Text>
-            </Pressable>
-          </Animated.View>
-        ) : null}
-
-        {/* Doubles as the section header — tells the customer whether a filter
-            did what they expected before they scroll. */}
-        <View style={styles.resultRow}>
-          <Text style={[Type.h3, { color: theme.text }]}>
-            {total == null
-              ? 'Providers'
-              : `${total} provider${total === 1 ? '' : 's'}`}
-          </Text>
-          <Text style={[Type.caption, { color: theme.textSecondary }]}>
-            {PROVIDER_SORT_LABELS[filters.sort]}
-          </Text>
-        </View>
+        <GlassButton
+          icon={searching ? 'close' : 'search'}
+          accessibilityLabel={searching ? 'Close search' : 'Search providers'}
+          onPress={() => {
+            if (searching) setSearch('');
+            setSearching((v) => !v);
+          }}
+        />
       </View>
 
       <FlatList
-        key="providers-grid-2"
         data={providers}
         keyExtractor={(item) => item.id}
-        numColumns={2}
-        columnWrapperStyle={{ gap: Layout.listGap }}
         onRefresh={query.refetch}
         refreshing={query.isRefetching && !loadingMore}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
+        ListHeaderComponent={header}
         ListFooterComponent={<ListFooter loading={loadingMore} />}
-        contentContainerStyle={{
-          paddingHorizontal: Layout.gutter,
-          paddingBottom: bottomInset,
-          gap: Layout.listGap,
-        }}
-        renderItem={({ item }) => <ProviderCard provider={item} style={{ flex: 1 }} />}
+        contentContainerStyle={{ paddingHorizontal: Layout.gutter, paddingBottom: bottomInset }}
+        renderItem={({ item }) => <ProviderResult provider={item} />}
         ListEmptyComponent={
           query.isLoading ? (
             <ListSkeleton />
@@ -180,19 +178,21 @@ export default function ProvidersList() {
             <View style={{ gap: Spacing.three }}>
               <EmptyState
                 icon={narrowed ? 'filter' : 'people-outline'}
-                title={narrowed ? 'No providers match' : 'No providers yet'}
+                title={narrowed ? 'Nobody matches that' : 'No providers yet'}
                 description={
                   narrowed
-                    ? 'Try removing a trade, lowering the minimum rating, or clearing the area.'
-                    : 'Service providers will appear here as they join HandLancer.'
+                    ? 'Try another trade, anywhere instead of one area, or fewer filters.'
+                    : 'Tradespeople will show up here as they join Handlancer.'
                 }
               />
-              {active > 0 ? (
+              {narrowed ? (
                 <Button
-                  title="Clear all filters"
+                  title="Show everyone"
                   variant="secondary"
-                  icon="close-circle"
-                  onPress={() => setFilters(emptyProviderFilters)}
+                  onPress={() => {
+                    setSearch('');
+                    setFilters(emptyProviderFilters);
+                  }}
                 />
               ) : null}
             </View>
@@ -200,9 +200,15 @@ export default function ProvidersList() {
         }
       />
 
+      <TradeSheet
+        visible={tradesOpen}
+        value={filters.services}
+        onClose={() => setTradesOpen(false)}
+        onApply={(services) => setFilters((f) => ({ ...f, services }))}
+      />
       <ProviderFilterSheet
-        visible={sheetOpen}
-        onClose={() => setSheetOpen(false)}
+        visible={moreOpen}
+        onClose={() => setMoreOpen(false)}
         value={filters}
         onApply={setFilters}
         search={debouncedSearch}
@@ -211,96 +217,36 @@ export default function ProvidersList() {
   );
 }
 
-type ActiveChip = { key: string; label: string; clear: Partial<ProviderFilters> };
-
-/** Human-readable summary of each active filter, plus how to switch it off. */
-function describeActive(f: ProviderFilters): ActiveChip[] {
-  const chips: ActiveChip[] = [];
-
-  for (const id of f.services) {
-    chips.push({
-      key: `svc-${id}`,
-      label: categoryLabel(id),
-      clear: { services: f.services.filter((s) => s !== id) },
-    });
-  }
-  if (f.minRating != null) {
-    chips.push({ key: 'rating', label: `${f.minRating}★ & up`, clear: { minRating: null } });
-  }
-  if (f.minExperience != null) {
-    chips.push({
-      key: 'exp',
-      label: `${f.minExperience}+ yrs`,
-      clear: { minExperience: null },
-    });
-  }
-  if (f.maxRate != null) {
-    chips.push({ key: 'rate', label: `≤ ₦${f.maxRate.toLocaleString()}/hr`, clear: { maxRate: null } });
-  }
-  if (f.location.trim()) {
-    chips.push({ key: 'loc', label: f.location.trim(), clear: { location: '' } });
-  }
-  if (f.verifiedOnly) {
-    chips.push({ key: 'verified', label: 'Verified', clear: { verifiedOnly: false } });
-  }
-  if (f.availableOnly) {
-    chips.push({ key: 'available', label: 'Available now', clear: { availableOnly: false } });
-  }
-  if (f.sort !== 'rating') {
-    chips.push({ key: 'sort', label: PROVIDER_SORT_LABELS[f.sort], clear: { sort: 'rating' } });
-  }
-  return chips;
+/** An underlined phrase in the filter sentence that changes what it says. */
+function Token({ children, onPress, small }: { children: React.ReactNode; onPress: () => void; small?: boolean }) {
+  const theme = useTheme();
+  return (
+    <Text
+      accessibilityRole="button"
+      onPress={onPress}
+      suppressHighlighting
+      style={[
+        small ? styles.tokenSmall : TypeItalic,
+        {
+          color: theme.text,
+          textDecorationLine: 'underline',
+          textDecorationColor: theme.textSecondary,
+        },
+      ]}>
+      {children}
+    </Text>
+  );
 }
 
 const styles = StyleSheet.create({
-  controls: {
-    paddingHorizontal: Layout.gutter,
-    paddingTop: Layout.headerGap,
-    paddingBottom: Spacing.twoHalf,
-    gap: Spacing.twoHalf,
-  },
-  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  filterBtn: {
+  toolbar: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.twoHalf,
-    borderRadius: Radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  badge: {
-    minWidth: 18,
-    height: 18,
-    paddingHorizontal: 4,
-    borderRadius: Radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  trades: { gap: Spacing.two, paddingRight: Spacing.four },
-  trade: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.twoHalf,
-    borderRadius: Radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  activeRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.two },
-  activeChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.two,
-    borderRadius: Radius.pill,
-  },
-  clearAll: { paddingVertical: Spacing.one, paddingHorizontal: Spacing.one },
-  resultRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
     justifyContent: 'space-between',
-    paddingTop: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    paddingBottom: Spacing.two,
   },
+  header: { gap: Spacing.twoHalf, paddingTop: Spacing.three, paddingBottom: Spacing.two },
+  sentence: { ...Type.serif, fontSize: 36, lineHeight: 42 },
+  meta: { lineHeight: 24 },
+  tokenSmall: { fontWeight: '600' },
 });

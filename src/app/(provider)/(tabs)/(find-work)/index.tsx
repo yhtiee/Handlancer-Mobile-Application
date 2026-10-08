@@ -1,28 +1,59 @@
-import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { HeroBanner } from '@/components/home/hero-banner';
-import { HomeHeader } from '@/components/home/home-header';
-import { QuickActions } from '@/components/home/quick-actions';
 import { JobFilterBar } from '@/components/jobs/job-filter-bar';
-import { JobGridCard } from '@/components/jobs/job-grid-card';
 import { JobFilterSheet } from '@/components/jobs/job-filter-sheet';
-import { Button, EmptyState, ListFooter, ListSkeleton, ScreenView, SearchField } from '@/components/ui';
-import { Layout, Spacing, Type } from '@/constants/theme';
-import { countActiveFilters, emptyJobFilters, SORT_LABELS, type JobFilters } from '@/lib/job-filters';
-import { routes } from '@/lib/routes';
-import { useAuth } from '@/providers/auth-provider';
-import { useOpenJobs, useOpenJobsCount } from '@/queries/use-discover-jobs';
+import { JobRow } from '@/components/jobs/job-row';
+import {
+  Button,
+  EmptyState,
+  formatMoney,
+  GlassButton,
+  Icon,
+  ListFooter,
+  ListSkeleton,
+  PhotoHeader,
+  ScreenView,
+  SearchField,
+} from '@/components/ui';
+import { Text } from '@/components/ui/text';
+import { Layout, Spacing, Type, TypeItalic } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useInfiniteList } from '@/hooks/use-infinite-list';
 import { useTabBarInset } from '@/hooks/use-insets';
 import { useTheme } from '@/hooks/use-theme';
+import {
+  countActiveFilters,
+  emptyJobFilters,
+  type JobFilters,
+  type JobSort,
+  SORT_LABELS,
+} from '@/lib/job-filters';
+import { providerImageFallback } from '@/lib/provider-images';
+import { routes } from '@/lib/routes';
+import { useAuth } from '@/providers/auth-provider';
+import { useOpenJobs, useOpenJobsCount } from '@/queries/use-discover-jobs';
+import { useUnreadCount } from '@/queries/use-notifications';
+import { useWallet } from '@/queries/use-wallet';
 
+const SORTS = Object.keys(SORT_LABELS) as JobSort[];
+
+/**
+ * Provider home. Leads with the provider at work and how much work is open
+ * near them, then the jobs themselves, one per row with the budget aligned
+ * right — the number a provider scans for.
+ */
 export default function FindWork() {
   const theme = useTheme();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { profile } = useAuth();
   const bottomInset = useTabBarInset();
+  const unread = useUnreadCount();
+  const { data: wallet } = useWallet();
 
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<JobFilters>(emptyJobFilters);
@@ -35,66 +66,86 @@ export default function FindWork() {
   const { data: total } = useOpenJobsCount(debouncedSearch, filters);
 
   const active = countActiveFilters(filters);
+  // Once the provider is searching or filtering they came here to work, so the
+  // photo steps aside and the results move up.
   const narrowed = active > 0 || Boolean(debouncedSearch);
+  const area = profile?.location?.split(',')[0]?.trim();
+
+  const controls = (
+    <>
+      <GlassButton
+        onPhoto={!narrowed}
+        icon="document-text-outline"
+        label="My quotes"
+        onPress={() => router.push(routes.providerQuotes)}
+      />
+      <View style={styles.controlsRight}>
+        <GlassButton
+          onPhoto={!narrowed}
+          icon="wallet-outline"
+          label={wallet ? formatMoney(wallet.balance, 'NGN', true) : undefined}
+          accessibilityLabel="Wallet"
+          onPress={() => router.push(routes.wallet('provider'))}
+        />
+        <GlassButton
+          onPhoto={!narrowed}
+          icon="notifications-outline"
+          badge={unread}
+          accessibilityLabel={unread ? `Notifications, ${unread} unread` : 'Notifications'}
+          onPress={() => router.push(routes.profileNotifications('provider'))}
+        />
+      </View>
+    </>
+  );
+
+  const count = total == null ? null : `${total} ${total === 1 ? 'job' : 'jobs'}`;
 
   const listHeader = (
-    <View style={{ gap: Layout.listGap, paddingBottom: Layout.listGap }}>
-      {/* Promos only when the provider is browsing. Once they are searching or
-          filtering they came here to work, and these just push jobs down. */}
-      {!narrowed ? (
-        <View style={{ gap: Layout.listGap }}>
-          <QuickActions
-            primary={{
-              icon: 'document-text-outline',
-              label: 'My Quotes',
-              hint: 'Track your bids',
-              href: routes.providerQuotes,
-            }}
-            secondary={{
-              icon: 'wallet-outline',
-              label: 'Wallet',
-              hint: 'Earnings & payouts',
-              href: routes.wallet('provider'),
-            }}
-          />
-          <HeroBanner
-            title="Win more work"
-            subtitle="A sharp profile and portfolio gets you hired faster."
-            ctaLabel="Edit profile"
-            href={routes.profileEdit('provider')}
-            icon="ribbon"
-            bgImage="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=800&auto=format&fit=crop"
-          />
-        </View>
-      ) : null}
+    <View>
+      {narrowed ? (
+        <View style={[styles.compact, { paddingTop: insets.top + Spacing.one }]}>{controls}</View>
+      ) : (
+        <PhotoHeader
+          source={profile ? (profile.avatar_url ?? providerImageFallback(profile)) : null}
+          contentPosition="top"
+          heightRatio={0.38}
+          eyebrow={[profile?.services?.[0], profile?.location].filter(Boolean).join(' · ') || undefined}
+          controls={controls}>
+          <Text style={[Type.serif, styles.onPhoto]}>
+            {count ? `${count} open near ` : 'Open work near '}
+            <Text style={TypeItalic}>{area || 'you'}.</Text>
+          </Text>
+        </PhotoHeader>
+      )}
 
       {/* Search and filters sit directly on top of the results they narrow, so
           the effect of a keystroke is visible without scrolling back up. */}
-      <View style={{ gap: Layout.listGap, paddingTop: narrowed ? 0 : Spacing.two }}>
-        <SearchField
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search jobs, trades or areas"
-        />
-
-        <JobFilterBar
-          filters={filters}
-          onChange={setFilters}
-          onOpenFilters={() => setSheetOpen(true)}
-        />
-      </View>
-
-      {/* Result count doubles as the section header — it tells the provider
-          whether a filter did what they expected. */}
-      <View style={styles.resultRow}>
-        <Text style={[Type.h3, { color: theme.text }]}>
-          {total == null
-            ? 'Open jobs'
-            : `${total} open job${total === 1 ? '' : 's'}`}
-        </Text>
-        <Text style={[Type.caption, { color: theme.textSecondary }]}>
-          {SORT_LABELS[filters.sort]}
-        </Text>
+      <View style={styles.tools}>
+        <SearchField value={search} onChangeText={setSearch} placeholder="Search jobs, trades or areas" />
+        <JobFilterBar filters={filters} onChange={setFilters} onOpenFilters={() => setSheetOpen(true)} />
+        {/* Result count doubles as the section header — it tells the provider
+            whether a filter did what they expected. */}
+        <View style={styles.resultRow}>
+          <Text style={[Type.caption, { color: theme.textSecondary }]}>
+            {total == null ? 'Open jobs' : `${total} ${total === 1 ? 'result' : 'results'}`}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Sort: ${SORT_LABELS[filters.sort]}. Tap to change.`}
+            hitSlop={10}
+            onPress={() =>
+              setFilters({
+                ...filters,
+                sort: SORTS[(SORTS.indexOf(filters.sort) + 1) % SORTS.length],
+              })
+            }
+            style={styles.sort}>
+            <Text style={[Type.caption, { color: theme.text, fontWeight: '600' }]}>
+              {SORT_LABELS[filters.sort]}
+            </Text>
+            <Icon name="swap-vertical" size={14} color={theme.text} />
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -102,7 +153,7 @@ export default function FindWork() {
   return (
     <ScreenView>
       <Stack.Screen options={{ headerShown: false }} />
-      <HomeHeader shell="provider" name={profile?.name} location={profile?.location} />
+      <StatusBar style={narrowed ? 'auto' : 'light'} />
 
       <FlatList
         data={jobs}
@@ -115,31 +166,26 @@ export default function FindWork() {
         onEndReachedThreshold={0.5}
         ListHeaderComponent={listHeader}
         ListFooterComponent={<ListFooter loading={loadingMore} />}
-        // Two-up: a provider comparing open jobs can see roughly twice as many
-        // budgets per screen, which is the number they are actually scanning for.
-        numColumns={2}
-        columnWrapperStyle={styles.column}
-        contentContainerStyle={{
-          paddingHorizontal: Layout.gutter,
-          paddingTop: Layout.headerGap,
-          paddingBottom: bottomInset,
-          gap: Layout.listGap,
-        }}
+        contentContainerStyle={{ paddingBottom: bottomInset }}
         renderItem={({ item }) => (
-          <JobGridCard job={item} href={routes.findWorkJob(item.id)} />
+          <View style={styles.rowWrap}>
+            <JobRow job={item} href={routes.findWorkJob(item.id)} />
+          </View>
         )}
         ListEmptyComponent={
           query.isLoading ? (
-            <ListSkeleton />
+            <View style={styles.rowWrap}>
+              <ListSkeleton />
+            </View>
           ) : (
-            <View style={{ gap: Spacing.three }}>
+            <View style={[styles.rowWrap, { gap: Spacing.three }]}>
               <EmptyState
                 icon={narrowed ? 'filter' : 'search'}
-                title={narrowed ? 'No jobs match these filters' : 'No open jobs'}
+                title={narrowed ? 'Nothing matches' : 'No open jobs'}
                 description={
                   narrowed
-                    ? 'Try widening your budget range, adding trades, or clearing the location.'
-                    : 'New jobs and direct invites will appear here. Pull to refresh.'
+                    ? 'Try a wider budget, more trades, or clear the location.'
+                    : 'New jobs and direct invites will show up here. Pull to refresh.'
                 }
               />
               {/* The way out of an over-filtered dead end, right where they hit it. */}
@@ -147,7 +193,6 @@ export default function FindWork() {
                 <Button
                   title="Clear all filters"
                   variant="secondary"
-                  icon="close-circle"
                   onPress={() => setFilters(emptyJobFilters)}
                 />
               ) : null}
@@ -168,12 +213,21 @@ export default function FindWork() {
 }
 
 const styles = StyleSheet.create({
+  onPhoto: { color: '#FFFFFF' },
+  controlsRight: { flexDirection: 'row', gap: Spacing.two },
+  compact: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.three,
+  },
+  tools: { paddingHorizontal: Layout.gutter, paddingTop: Spacing.three, gap: Spacing.twoHalf },
   resultRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    paddingTop: Spacing.one,
   },
-  // Cards are a fixed 48% wide, so `space-between` puts the gutter between them
-  // and leaves a lone last card at its normal size rather than stretched.
-  column: { justifyContent: 'space-between', alignItems: 'flex-start' },
+  sort: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  rowWrap: { paddingHorizontal: Layout.gutter },
 });

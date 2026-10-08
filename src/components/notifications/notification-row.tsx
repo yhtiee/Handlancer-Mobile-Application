@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
 import { Icon } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
@@ -19,10 +20,10 @@ export function NotificationRow({ notification }: { notification: Notification }
     <View
       style={[
         styles.row,
-        { backgroundColor: unread ? theme.tint + '14' : theme.backgroundElement },
+        { backgroundColor: unread ? theme.backgroundSelected : theme.backgroundElement },
       ]}>
-      <View style={[styles.iconWrap, { backgroundColor: theme.tint + '22' }]}>
-        <Icon name={icon} size={20} color={theme.tint} />
+      <View style={[styles.iconWrap, { backgroundColor: theme.backgroundElement }]}>
+        <Icon name={icon} size={20} color={theme.text} />
       </View>
       <View style={styles.body}>
         <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
@@ -35,7 +36,7 @@ export function NotificationRow({ notification }: { notification: Notification }
           {timeAgo(notification.created_at)}
         </Text>
       </View>
-      {unread ? <View style={[styles.dot, { backgroundColor: theme.tint }]} /> : null}
+      {unread ? <View style={[styles.dot, { backgroundColor: theme.text }]} /> : null}
     </View>
   );
 }

@@ -19,6 +19,8 @@ export const routes = {
   // User · Jobs
   postJob: '/(user)/job/post' as Href,
   postDirectJob: (providerId: string): Href => `/(user)/job/post?provider=${providerId}` as Href,
+  /** Post a job with the trade already chosen (from the home screen's trade row). */
+  postJobIn: (category: string): Href => `/(user)/job/post?category=${category}` as Href,
   jobDetail: (id: string): Href => `/(user)/job/${id}` as Href,
   jobQuotes: (jobId: string): Href => `/(user)/job/quotes/${jobId}` as Href,
   reviewJob: (jobId: string): Href => `/(user)/job/review/${jobId}` as Href,
@@ -26,6 +28,8 @@ export const routes = {
 
   // User · Discover
   browseProviders: '/(user)/providers' as Href,
+  /** Browse with a trade already chosen, e.g. from a trade on the home screen. */
+  browseProvidersIn: (service: string): Href => `/(user)/providers?service=${service}` as Href,
   providerProfile: (id: string): Href => `/(user)/provider/${id}` as Href,
 
   // Provider · Find Work

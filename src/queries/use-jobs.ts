@@ -4,6 +4,8 @@ import { useAuth } from '@/providers/auth-provider';
 import { queryKeys } from '@/queries/keys';
 import type { JobStatus } from '@/services/database.types';
 import {
+  countMyJobs,
+  countProviderJobs,
   createJob,
   getJob,
   listMyJobs,
@@ -36,6 +38,27 @@ export function useProviderJobs(segment: ProviderJobSegment) {
     queryFn: ({ pageParam }) => listProviderJobs(providerId!, segment, pageParam),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => lastPage.nextPage,
+    enabled: !!providerId,
+  });
+}
+
+/** Exact size of a client segment, for the Jobs tab's segment labels. */
+export function useMyJobsCount(segment: UserJobSegment) {
+  const { session } = useAuth();
+  const ownerId = session?.user.id;
+  return useQuery({
+    queryKey: queryKeys.jobs.mineCount(segment),
+    queryFn: () => countMyJobs(ownerId!, segment),
+    enabled: !!ownerId,
+  });
+}
+
+export function useProviderJobsCount(segment: ProviderJobSegment) {
+  const { session } = useAuth();
+  const providerId = session?.user.id;
+  return useQuery({
+    queryKey: queryKeys.jobs.hiredCount(segment),
+    queryFn: () => countProviderJobs(providerId!, segment),
     enabled: !!providerId,
   });
 }

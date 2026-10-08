@@ -66,3 +66,23 @@ export function providerImageFallback(provider: { id: string; services?: string[
   const keyword = SKILL_KEYWORDS[skill] ?? 'artisan';
   return SKILL_IMAGES[keyword] ?? SKILL_IMAGES['artisan'];
 }
+
+/** A workshop photo for each service category, from the same shoot as the provider photos. */
+const CATEGORY_PHOTO: Record<string, string> = {
+  plumbing: 'plumber',
+  electrical: 'electrician',
+  carpentry: 'carpenter',
+  painting: 'painter',
+  cleaning: 'cleaning',
+  appliance: 'mechanic',
+  masonry: 'bricklayer',
+  ac: 'general',
+  auto: 'mechanic',
+  gardening: 'gardener',
+  moving: 'driver',
+  other: 'artisan',
+};
+
+export function categoryPhoto(categoryId: string): any {
+  return SKILL_IMAGES[CATEGORY_PHOTO[categoryId] ?? 'artisan'] ?? SKILL_IMAGES['artisan'];
+}

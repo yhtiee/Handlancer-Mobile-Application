@@ -1,6 +1,7 @@
 import { Stack, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@/components/ui/text';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -109,12 +110,12 @@ export function BankAccountScreen() {
                 setBankCode(null);
                 setResolvedName(null);
               }}
-              style={[styles.selectedBank, { backgroundColor: theme.tint + '14', borderColor: theme.tint + '44' }]}>
-              <Icon name="business" size={18} color={theme.tint} />
+              style={[styles.selectedBank, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+              <Icon name="business" size={18} color={theme.text} />
               <Text style={[Type.bodyMedium, { color: theme.text, flex: 1 }]}>
                 {selectedBank.name}
               </Text>
-              <Text style={[Type.caption, { color: theme.tint }]}>Change</Text>
+              <Text style={[Type.caption, { color: theme.text }]}>Change</Text>
             </Pressable>
           ) : banksLoading ? (
             <GlobalLoader backgroundColor="transparent" />

@@ -1,5 +1,6 @@
-import { Link, Stack, useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar, Button, Card, Icon, type IconName, RatingStars, Screen } from '@/components/ui';
@@ -81,8 +82,8 @@ function MenuRow({
 
   return (
     <TouchableOpacity style={styles.row} onPress={() => router.push(href)}>
-      <View style={[styles.rowIcon, { backgroundColor: theme.tint + '1F' }]}>
-        <Icon name={icon} size={17} color={theme.tint} />
+      <View style={[styles.rowIcon, { backgroundColor: theme.backgroundElement }]}>
+        <Icon name={icon} size={17} color={theme.text} />
       </View>
       <Text style={[styles.rowLabel, { color: theme.text }]}>{label}</Text>
       {badge ? (

@@ -1,5 +1,6 @@
-import { Link, useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
 import { Avatar } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';

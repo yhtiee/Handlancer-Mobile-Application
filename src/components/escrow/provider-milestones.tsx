@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
-import { Button, ConfirmModal, MoneyText, SuccessModal } from '@/components/ui';
+import { Button, ConfirmModal, formatMoney, MoneyText, SuccessModal } from '@/components/ui';
 import { Spacing, Type } from '@/constants/theme';
 import {
   useEscrow,
@@ -67,23 +68,24 @@ export function ProviderMilestones({ job }: { job: Job }) {
     <View style={styles.wrap}>
       {canRequestMaterials ? (
         <Button
-          title="Request materials funds"
-          variant="secondary"
-          icon="cube"
+          title={`Ask for ${formatMoney(escrow.materials_amount)} for materials`}
+          variant={canMarkComplete && !canRequestMaterials ? 'secondary' : 'primary'}
+          size="lg"
           onPress={() => setConfirming('materials')}
         />
       ) : null}
 
       {canMarkComplete ? (
         <>
+          {/* While materials are still to ask for, finishing is the second step. */}
           <Button
-            title="Mark work complete"
+            title="Mark it done"
+            variant={canRequestMaterials ? 'secondary' : 'primary'}
             size="lg"
-            icon="checkmark-circle"
             onPress={() => setConfirming('complete')}
           />
-          <Text style={[Type.caption, { color: theme.textSecondary }]}>
-            Upload your after photos first — the client reviews them before releasing payment.
+          <Text style={[Type.caption, styles.note, { color: theme.textSecondary }]}>
+            Add your after photos first. The client checks them before paying.
           </Text>
         </>
       ) : null}
@@ -93,7 +95,7 @@ export function ProviderMilestones({ job }: { job: Job }) {
         onCancel={() => setConfirming(null)}
         onConfirm={confirm}
         icon="cube"
-        title="Request materials funds?"
+        title="Ask for materials money?"
         message="The client is notified and can release this portion early so you can buy materials."
         confirmLabel="Send request"
         loading={busy}
@@ -111,9 +113,9 @@ export function ProviderMilestones({ job }: { job: Job }) {
         onCancel={() => setConfirming(null)}
         onConfirm={confirm}
         icon="checkmark-circle"
-        title="Mark work complete?"
+        title="Mark it done?"
         message="This tells the client the job is finished so they can review it and release your final payment. Make sure your after photos are uploaded."
-        confirmLabel="Mark complete"
+        confirmLabel="Mark it done"
         loading={busy}
         error={error}
         details={[
@@ -137,4 +139,5 @@ export function ProviderMilestones({ job }: { job: Job }) {
 
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.two },
+  note: { textAlign: 'center' },
 });

@@ -1,136 +1,126 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Avatar, MoneyText, QuoteStatusPill, RatingStars } from '@/components/ui';
-import { Radius, Spacing } from '@/constants/theme';
-import { timeAgo } from '@/lib/date';
-import type { QuoteWithProvider } from '@/services/quotes';
+import { formatMoney, Icon } from '@/components/ui';
+import { Text } from '@/components/ui/text';
+import { Radius, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { timeAgo } from '@/lib/date';
+import { providerImageFallback } from '@/lib/provider-images';
+import type { QuoteLineItem } from '@/services/database.types';
+import type { QuoteWithProvider } from '@/services/quotes';
 
-/** A quote shown to the job owner during review, with the provider's identity and itemized breakdown. */
+/**
+ * One quote in the compare list. Collapsed: who, rating, price. Tap to expand
+ * in place: every line, the provider's note, and the decision — so a client
+ * compares, accepts or declines without leaving the list.
+ */
 export function QuoteCard({
   quote,
+  expanded,
+  onToggle,
   children,
 }: {
   quote: QuoteWithProvider;
+  expanded: boolean;
+  onToggle: () => void;
+  /** The decision buttons, shown when expanded. */
   children?: React.ReactNode;
 }) {
   const theme = useTheme();
   const p = quote.provider;
-
-  const lineItems = quote.line_items ?? [];
-  const materialItems = lineItems.filter((i) => i.type === 'material');
-  const laborItems = lineItems.filter((i) => i.type === 'labor');
+  const declined = quote.status === 'rejected';
+  const accepted = quote.status === 'approved';
+  const rating = (p?.rating ?? 0) > 0 ? `${p!.rating.toFixed(1)} rating` : 'New';
+  const labour = quote.line_items.filter((i) => i.type === 'labor');
+  const materials = quote.line_items.filter((i) => i.type === 'material');
 
   return (
-    <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-      <View style={styles.header}>
-        <Avatar uri={p?.avatar_url} name={p?.name} size={40} />
-        <View style={styles.who}>
-          <Text numberOfLines={1} style={[styles.name, { color: theme.text }]}>
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: theme.backgroundElement,
+          borderColor: accepted ? theme.text : 'transparent',
+          opacity: declined ? 0.6 : 1,
+        },
+      ]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={`${p?.name ?? 'Provider'}, ${formatMoney(quote.total)}`}
+        onPress={onToggle}
+        style={styles.head}>
+        {p ? (
+          <Image
+            source={p.avatar_url ?? providerImageFallback(p)}
+            style={styles.photo}
+            contentFit="cover"
+            contentPosition="top"
+          />
+        ) : (
+          <View style={[styles.photo, { backgroundColor: theme.backgroundSelected }]} />
+        )}
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text numberOfLines={1} style={[Type.title, { color: theme.text }]}>
             {p?.name ?? 'Provider'}
           </Text>
-          <RatingStars rating={p?.rating ?? 0} size={12} />
+          <Text numberOfLines={1} style={[Type.caption, { color: theme.textSecondary }]}>
+            {accepted ? 'Accepted' : declined ? 'Declined' : `${rating} · ${timeAgo(quote.created_at)}`}
+          </Text>
         </View>
-        <QuoteStatusPill status={quote.status} />
-      </View>
-
-      <View style={styles.breakdown}>
-        {/* Materials Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Materials</Text>
-          {materialItems.length > 0 ? (
-            <View style={styles.itemList}>
-              {materialItems.map((item, idx) => (
-                <View key={`mat-${idx}`} style={styles.itemRow}>
-                  <Text numberOfLines={1} style={[styles.itemLabel, { color: theme.textSecondary }]}>
-                    • {item.label || 'Material'}
-                  </Text>
-                  <MoneyText amount={item.amount} style={{ fontSize: 13, fontWeight: '500' }} />
-                </View>
-              ))}
-            </View>
-          ) : null}
-          <Line label="Materials Subtotal" amount={quote.materials_cost} isSubtotal />
-        </View>
-
-        <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-        {/* Labour Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Labour</Text>
-          {laborItems.length > 0 ? (
-            <View style={styles.itemList}>
-              {laborItems.map((item, idx) => (
-                <View key={`lab-${idx}`} style={styles.itemRow}>
-                  <Text numberOfLines={1} style={[styles.itemLabel, { color: theme.textSecondary }]}>
-                    • {item.label || 'Labour'}
-                  </Text>
-                  <MoneyText amount={item.amount} style={{ fontSize: 13, fontWeight: '500' }} />
-                </View>
-              ))}
-            </View>
-          ) : null}
-          <Line label="Labour Subtotal" amount={quote.labor_cost} isSubtotal />
-        </View>
-
-        <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-        <View style={styles.totalRow}>
-          <Text style={[styles.totalLabel, { color: theme.text }]}>Total Quote Amount</Text>
-          <MoneyText amount={quote.total} style={{ fontSize: 17 }} />
-        </View>
-      </View>
-
-      {quote.message ? (
-        <Text selectable style={[styles.message, { color: theme.textSecondary }]}>
-          {quote.message}
+        <Text style={[styles.price, { color: theme.text }, declined && styles.struck]}>
+          {formatMoney(quote.total)}
         </Text>
+        <Icon name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={theme.textSecondary} />
+      </Pressable>
+
+      {expanded ? (
+        <View style={styles.body}>
+          <Lines title="Labour" items={labour} total={quote.labor_cost} />
+          <Lines title="Materials" items={materials} total={quote.materials_cost} />
+
+          {quote.message ? (
+            <Text selectable style={[styles.note, { color: theme.text }]}>
+              “{quote.message}”
+            </Text>
+          ) : null}
+
+          {children}
+        </View>
       ) : null}
-
-      <Text style={[styles.time, { color: theme.textSecondary }]}>{timeAgo(quote.created_at)}</Text>
-
-      {children}
     </View>
   );
 }
 
-function Line({ label, amount, isSubtotal }: { label: string; amount: number; isSubtotal?: boolean }) {
+function Lines({ title, items, total }: { title: string; items: QuoteLineItem[]; total: number }) {
   const theme = useTheme();
+  if (!items.length) return null;
   return (
-    <View style={styles.line}>
-      <Text
-        style={[
-          styles.lineLabel,
-          { color: isSubtotal ? theme.text : theme.textSecondary, fontWeight: isSubtotal ? '600' : '400' },
-        ]}>
-        {label}
-      </Text>
-      <MoneyText amount={amount} style={{ fontSize: 14, fontWeight: isSubtotal ? '600' : '500' }} />
+    <View style={{ gap: Spacing.one }}>
+      <View style={styles.lineHead}>
+        <Text style={[Type.bodyMedium, { color: theme.text }]}>{title}</Text>
+        <Text style={[Type.bodyMedium, styles.num, { color: theme.text }]}>{formatMoney(total)}</Text>
+      </View>
+      {items.map((item, i) => (
+        <View key={i} style={styles.line}>
+          <Text style={[Type.caption, { color: theme.textSecondary, flex: 1 }]}>{item.label}</Text>
+          <Text style={[Type.caption, styles.num, { color: theme.textSecondary }]}>{formatMoney(item.amount)}</Text>
+        </View>
+      ))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    padding: Spacing.three,
-    borderRadius: Radius.lg,
-    borderCurve: 'continuous',
-    gap: Spacing.three,
-  },
-  header: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  who: { flex: 1, gap: 2 },
-  name: { fontSize: 15, fontWeight: '600' },
-  breakdown: { gap: Spacing.two + 2 },
-  section: { gap: Spacing.one + 2 },
-  sectionTitle: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-  itemList: { gap: Spacing.one, paddingLeft: Spacing.one },
-  itemRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  itemLabel: { flex: 1, fontSize: 13, paddingRight: Spacing.two },
-  line: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 },
-  lineLabel: { fontSize: 14 },
-  divider: { height: StyleSheet.hairlineWidth, marginVertical: 2 },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  totalLabel: { fontSize: 15, fontWeight: '700' },
-  message: { fontSize: 14, lineHeight: 20 },
-  time: { fontSize: 12 },
+  card: { borderRadius: Radius.lg, borderCurve: 'continuous', borderWidth: 1.5, overflow: 'hidden' },
+  head: { flexDirection: 'row', alignItems: 'center', gap: Spacing.twoHalf, padding: Spacing.three },
+  photo: { width: 48, height: 48, borderRadius: 24 },
+  price: { fontSize: 17, fontWeight: '600', letterSpacing: -0.2, fontVariant: ['tabular-nums'] },
+  struck: { textDecorationLine: 'line-through' },
+  body: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.three, gap: Spacing.three },
+  lineHead: { flexDirection: 'row', justifyContent: 'space-between' },
+  line: { flexDirection: 'row', gap: Spacing.two },
+  num: { fontVariant: ['tabular-nums'] },
+  note: { ...Type.serifTitle, fontSize: 17, lineHeight: 24, fontStyle: 'italic' },
 });

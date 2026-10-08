@@ -1,14 +1,6 @@
 import { useState, useMemo } from 'react';
-import {
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { Modal, Pressable, StyleSheet, View, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text } from '@/components/ui/text';
 
 import { Icon, type IconName } from '@/components/ui/icon';
 import { SearchField } from '@/components/ui/search-field';
@@ -59,8 +51,7 @@ export function SearchableDropdown({
   const triggerBorderColor = error
     ? theme.danger
     : visible
-    ? theme.tint
-    : theme.border;
+    ? theme.text : theme.border;
 
   return (
     <View style={styles.triggerWrap}>
@@ -83,7 +74,7 @@ export function SearchableDropdown({
                 <Icon
                   name={selectedOption.icon}
                   size={20}
-                  color={theme.tint}
+                  color={theme.text}
                 />
               ) : null}
               <Text style={[styles.triggerText, { color: theme.text }]}>
@@ -178,7 +169,7 @@ export function SearchableDropdown({
                         <Icon
                           name={item.icon}
                           size={20}
-                          color={isSelected ? theme.tint : theme.textSecondary}
+                          color={isSelected ? theme.text : theme.textSecondary}
                         />
                       ) : null}
                       <Text
@@ -193,7 +184,7 @@ export function SearchableDropdown({
                       </Text>
                     </View>
                     {isSelected ? (
-                      <Icon name="checkmark" size={20} color={theme.tint} />
+                      <Icon name="checkmark" size={20} color={theme.text} />
                     ) : null}
                   </Pressable>
                 );
